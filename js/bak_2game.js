@@ -578,12 +578,10 @@ const MatchManager = {
   sharedLevel: 1,
   sharedGravityInterval: 800,
   linesPerLevel: 10, // configurable via Settings -> Gameplay
-
   _levelForLines(lines) { 
-    
-
-     return 1 + Math.floor(lines / this.linesPerLevel); },
-  _gravityForLevel(level) { return Math.max(80, 800 - (level - 1) * 60); },
+    console.log("Lines per level: " + this.linesPerLevel);
+    return 1 + Math.floor(lines / this.linesPerLevel); },
+  _gravityForLevel(level) { return Math.max(60, 800 - (level - 1) * 60); }, //change first parameter to 60for faster speed increase
 
   _updateSharedLevel() {
     let maxLines = 0;
@@ -654,16 +652,13 @@ const MatchManager = {
     } catch (e) { /* storage unavailable — ignore */ }
   },
 
-  _clampLinesPerLevel(n) { return Math.max(1, Math.min(30, Math.round(n))); },
+  _clampLinesPerLevel(n) { return Math.max(3, Math.min(30, Math.round(n))); },
 
-  /** Called from the Settings menu. Applies + re-syncs speed immediately,
-   *  regardless of whether the match is playing, paused, or hasn't started
-   *  yet — so the change is never silently dropped depending on when you
-   *  happen to open Settings from. */
+  /** Called from the Settings menu. Re-syncs speed immediately mid-match if needed. */
   setLinesPerLevel(n) {
     this.linesPerLevel = this._clampLinesPerLevel(n);
     this.saveGameplaySettings();
-    this._updateSharedLevel();
+    if (this.state === 'playing') this._updateSharedLevel();
   },
 
   /** Called once ControllerSetup finishes with a confirmed assignment list. */

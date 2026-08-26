@@ -151,15 +151,10 @@ const FocusNav = {
       const justPressed = (bi) => pressed(bi) && !prev[bi];
 
       if (justPressed(0)) this.confirm();          // A / Cross
-      if (justPressed(1)) this.back();              // B / Circle
-      // NOTE: Start (button 9) is intentionally NOT wired to confirm() here.
-      // The join lobby (controllerSetup.js) and in-match pause toggle
-      // (GamepadSystem) each already have their own dedicated Start-button
-      // handling. Having FocusNav ALSO treat Start as a generic confirm
-      // caused both handlers to fire in the same frame — double-triggering
-      // ControllerSetup.finish() or MatchManager.togglePause()/resumeFromPause()
-      // — which is what made "Start Match" and "Pause" feel intermittently
-      // broken. A / Cross (button 0) remains the sole generic confirm button.
+      if (justPressed(1) || justPressed(9)) {       // B / Circle, or Start-as-back on some flows
+        if (justPressed(1)) this.back();
+      }
+      if (justPressed(9) && !justPressed(1)) this.confirm(); // Start also confirms/starts
 
       const axisY = pad.axes[1] || 0;
       const dpadUp = pressed(12), dpadDown = pressed(13), dpadLeft = pressed(14), dpadRight = pressed(15);

@@ -577,13 +577,9 @@ const MatchManager = {
   // whether 1, 2, 3, or 4 people are playing.
   sharedLevel: 1,
   sharedGravityInterval: 800,
-  linesPerLevel: 10, // configurable via Settings -> Gameplay
 
-  _levelForLines(lines) { 
-    
-
-     return 1 + Math.floor(lines / this.linesPerLevel); },
-  _gravityForLevel(level) { return Math.max(80, 800 - (level - 1) * 60); },
+  _levelForLines(lines) { return 1 + Math.floor(lines / 2); }, // 1 line per level, no cap
+  _gravityForLevel(level) { return Math.max(60, 800 - (level - 1) * 60); }, //update the first parameter to change the minimum gravity speed (in ms) for higher levels
 
   _updateSharedLevel() {
     let maxLines = 0;
@@ -633,37 +629,7 @@ const MatchManager = {
   init() {
     this.lastTime = performance.now();
     this.eliminationOrder = [];
-    this.loadGameplaySettings();
     requestAnimationFrame(this.loop.bind(this));
-  },
-
-  /* =================== GAMEPLAY SETTINGS (persisted) =================== */
-  loadGameplaySettings() {
-    try {
-      const raw = localStorage.getItem('tetrisai.gameplaySettings');
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (Number.isFinite(s.linesPerLevel)) this.linesPerLevel = this._clampLinesPerLevel(s.linesPerLevel);
-      }
-    } catch (e) { /* ignore corrupt settings */ }
-  },
-
-  saveGameplaySettings() {
-    try {
-      localStorage.setItem('tetrisai.gameplaySettings', JSON.stringify({ linesPerLevel: this.linesPerLevel }));
-    } catch (e) { /* storage unavailable — ignore */ }
-  },
-
-  _clampLinesPerLevel(n) { return Math.max(1, Math.min(30, Math.round(n))); },
-
-  /** Called from the Settings menu. Applies + re-syncs speed immediately,
-   *  regardless of whether the match is playing, paused, or hasn't started
-   *  yet — so the change is never silently dropped depending on when you
-   *  happen to open Settings from. */
-  setLinesPerLevel(n) {
-    this.linesPerLevel = this._clampLinesPerLevel(n);
-    this.saveGameplaySettings();
-    this._updateSharedLevel();
   },
 
   /** Called once ControllerSetup finishes with a confirmed assignment list. */
