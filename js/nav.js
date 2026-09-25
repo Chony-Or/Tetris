@@ -10,16 +10,39 @@
  * `FocusNav.activate(containerEl)` when it opens and
  * `FocusNav.deactivate()` when it closes.
  *
+ * NAVIGATION MODEL — SPATIAL, NOT LINEAR
+ * ---------------------------------------------------------------------
+ * Earlier versions treated every focusable element in a screen as one
+ * flat list, and Up/Down simply stepped through it while Left/Right
+ * only adjusted a slider. That made screens with side-by-side controls
+ * (e.g. Match Setup's player-count row, or a bot's Easy/Normal/Hard/
+ * Expert buttons) impossible to navigate horizontally — you had to
+ * cursor past every single item to get from one end of a row to the
+ * other.
+ *
+ * Now each arrow direction looks at the REAL on-screen position of
+ * every focusable element and jumps to the nearest one that lies in
+ * that direction (a standard "spatial navigation" approach, the same
+ * idea TVs/consoles use for D-Pad menu navigation). This means:
+ *   - Left/Right on a row of buttons (player-count, difficulty picks)
+ *     moves across that row instead of falling through to the next
+ *     item down the page.
+ *   - Up/Down moves to the nearest item above/below, even if it isn't
+ *     perfectly aligned.
+ *   - Sliders keep working exactly as before: while a slider has
+ *     focus, Left/Right adjusts its value instead of navigating away,
+ *     so you don't overshoot into the next row while dragging a value.
+ * No per-screen wiring is needed — this is automatic for every overlay
+ * that already uses FocusNav.
+ *
  * Supported inputs (any connected gamepad, standard mapping, works for
  * Xbox/PlayStation/generic pads since we only use the standard D-Pad,
  * left-stick, A/Cross(0), B/Circle(1), and Start(9) indices):
- *   D-Pad Up/Down or Left Stick Up/Down  -> move selection
- *   D-Pad Left/Right or Left Stick L/R   -> adjust focused slider
- *   A / Cross (button 0)                 -> confirm / click
- *   B / Circle (button 1)                -> back / cancel
- *   Start (button 9)                     -> confirm (pause-equivalent)
- *   Left/Right bumper (4/5)              -> switch tab, where present
- * Keyboard equivalents: Arrow Up/Down, Arrow Left/Right, Enter, Escape.
+ *   D-Pad Up/Down/Left/Right or Left Stick -> move selection (spatial)
+ *   A / Cross (button 0)                   -> confirm / click
+ *   B / Circle (button 1)                  -> back / cancel
+ *   Start (button 9)                       -> confirm (pause-equivalent)
+ * Keyboard equivalents: Arrow Up/Down/Left/Right, Enter, Escape.
  * =====================================================================
  */
 "use strict";
@@ -32,10 +55,8 @@ const FocusNav = {
   _stack: [],
   _pollHandle: null,
   _prevButtons: {},
-  _repeatTimer: 0,
-  _repeatDir: 0,
 
-  FOCUSABLE_SELECTOR: '.btn, .count-btn, .icon-btn, .settings-slider, .cs-slot-join, input[type="checkbox"], .results-btn, .tab-btn',
+  FOCUSABLE_SELECTOR: '.btn, .count-btn, .icon-btn, .settings-slider, .cs-slot-join, input[type="checkbox"], .results-btn, .tab-btn, .ms-diff-btn',
 
   init() {
     window.addEventListener('keydown', (e) => this._onKeyDown(e));
@@ -96,9 +117,49 @@ const FocusNav = {
     el.scrollIntoView({ block: 'nearest' });
   },
 
-  move(delta) {
-    if (!this.items.length) return;
-    this.index = (this.index + delta + this.items.length) % this.items.length;
+  /* =================== SPATIAL NAVIGATION =================== */
+  /**
+   * moveDir(dx, dy) — jump to whichever focusable item best matches the
+   * requested direction, based on actual layout position rather than
+   * DOM order. dx/dy is one of (-1,0) (1,0) (0,-1) (0,1).
+   */
+  moveDir(dx, dy) {
+    if (this.items.length < 2) return;
+    const cur = this.items[this.index];
+    if (!cur) return;
+    const curRect = cur.getBoundingClientRect();
+    const cx = curRect.left + curRect.width / 2;
+    const cy = curRect.top + curRect.height / 2;
+
+    let best = -1, bestScore = Infinity;
+    for (let i = 0; i < this.items.length; i++) {
+      if (i === this.index) continue;
+      const r = this.items[i].getBoundingClientRect();
+      const ix = r.left + r.width / 2;
+      const iy = r.top + r.height / 2;
+      const vx = ix - cx, vy = iy - cy;
+
+      // Primary-axis displacement must point the way that was asked for
+      // (allow a little slack so near-aligned items still count).
+      const primary = dx !== 0 ? vx * dx : vy * dy;
+      if (primary <= 2) continue;
+
+      const perpendicular = dx !== 0 ? Math.abs(vy) : Math.abs(vx);
+      // Favor items that are close and well-aligned on the perpendicular
+      // axis (e.g. same row for left/right, same column for up/down).
+      const score = primary + perpendicular * 2.2;
+      if (score < bestScore) { bestScore = score; best = i; }
+    }
+
+    if (best === -1) {
+      // Nothing lies in that direction (e.g. already at the edge of a
+      // row) — fall back to linear wrap for Up/Down only, so Up/Down
+      // still always gets you somewhere.
+      if (dy !== 0) { this.index = (this.index + dy + this.items.length) % this.items.length; }
+      else return;
+    } else {
+      this.index = best;
+    }
     this._applyFocus();
     if (window.AudioManager) AudioManager.navMove();
   },
@@ -125,13 +186,19 @@ const FocusNav = {
     el.dispatchEvent(new Event('change'));
   },
 
+  /** True when the currently focused item is a slider (Left/Right adjusts it instead of navigating). */
+  _onSlider() {
+    const el = this.items[this.index];
+    return !!el && el.tagName === 'INPUT' && el.type === 'range';
+  },
+
   _onKeyDown(e) {
     if (!this.container) return;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape', 'Space'].includes(e.code)) e.preventDefault();
-    if (e.code === 'ArrowUp') this.move(-1);
-    else if (e.code === 'ArrowDown') this.move(1);
-    else if (e.code === 'ArrowLeft') this.adjustSlider(-1);
-    else if (e.code === 'ArrowRight') this.adjustSlider(1);
+    if (e.code === 'ArrowUp') this.moveDir(0, -1);
+    else if (e.code === 'ArrowDown') this.moveDir(0, 1);
+    else if (e.code === 'ArrowLeft') { if (this._onSlider()) this.adjustSlider(-1); else this.moveDir(-1, 0); }
+    else if (e.code === 'ArrowRight') { if (this._onSlider()) this.adjustSlider(1); else this.moveDir(1, 0); }
     else if (e.code === 'Enter' || e.code === 'Space') this.confirm();
     else if (e.code === 'Escape') this.back();
   },
@@ -162,17 +229,18 @@ const FocusNav = {
       // broken. A / Cross (button 0) remains the sole generic confirm button.
 
       const axisY = pad.axes[1] || 0;
+      const axisX = pad.axes[0] || 0;
       const dpadUp = pressed(12), dpadDown = pressed(13), dpadLeft = pressed(14), dpadRight = pressed(15);
       const up = dpadUp || axisY < -0.55;
       const down = dpadDown || axisY > 0.55;
-      const left = dpadLeft || (pad.axes[0] || 0) < -0.55;
-      const right = dpadRight || (pad.axes[0] || 0) > 0.55;
+      const left = dpadLeft || axisX < -0.55;
+      const right = dpadRight || axisX > 0.55;
 
       const wasUp = prev._up, wasDown = prev._down, wasLeft = prev._left, wasRight = prev._right;
-      if (up && !wasUp) this.move(-1);
-      if (down && !wasDown) this.move(1);
-      if (left && !wasLeft) this.adjustSlider(-1);
-      if (right && !wasRight) this.adjustSlider(1);
+      if (up && !wasUp) this.moveDir(0, -1);
+      if (down && !wasDown) this.moveDir(0, 1);
+      if (left && !wasLeft) { if (this._onSlider()) this.adjustSlider(-1); else this.moveDir(-1, 0); }
+      if (right && !wasRight) { if (this._onSlider()) this.adjustSlider(1); else this.moveDir(1, 0); }
 
       const snapshot = pad.buttons.map(b => b.pressed);
       snapshot._up = up; snapshot._down = down; snapshot._left = left; snapshot._right = right;

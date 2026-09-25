@@ -1,57 +1,59 @@
 # MIS TETRIS AI
 
-A browser-based local multiplayer Tetris game built with plain HTML, CSS, and JavaScript. The project supports 1 to 4 players, keyboard controls, gamepad support, procedural audio, visual effects, split-screen gameplay, and a full menu system.
+A browser-based local multiplayer Tetris game built with plain HTML, CSS, and JavaScript. This project is designed for 1 to 4 players, supports keyboard and controller input, and features arcade styling, procedural audio, visual effects, and controller-first menu navigation.
 
-## Project Overview
+## Overview
 
-This project is a styled arcade-inspired Tetris experience designed for local play. Players can join from either keyboard layouts or connected controllers, battle in the same match, and trigger garbage attacks, combos, T-spin bonuses, and back-to-back chains.
+MIS TETRIS AI is a local split-screen Tetris experience focused on multiplayer competition. Players can join with keyboards or connected gamepads, build combo chains, send garbage to opponents, and survive elimination rounds until one player remains.
 
-The game includes:
+The game emphasizes:
 
-- Local multiplayer for 1-4 players
-- Keyboard and gamepad input support
-- Dynamic match setup and lobby flow
-- Pause, settings, and result screens
-- Audio synthesis without external asset files
-- Visual effects and animated background layers
-- Adjustable match difficulty settings
-- Saveable settings using browser localStorage
+- 1-4 player local matches
+- Mixed keyboard and controller support
+- Shared match setup and results flow
+- Audio and visual feedback without external asset files
+- Controller navigation in menus and overlays
+- Adjustable match pacing and game settings
 
-## Main Features
+## Features
 
-### Gameplay
+### Gameplay systems
 
-- Classic falling-block mechanics with locking, ghost piece preview, and hold system
-- Bag-based randomizer for fair piece distribution
-- Rotation logic with SRS-style wall kicks
-- Line clears, combo bonuses, back-to-back chains, and garbage attacks
-- Player elimination and survival-based match ranking
-- Match timer and persistent results UI
+- Classic falling-piece rules with lock delay and hard/soft drops
+- Ghost-piece preview for landing guidance
+- Hold mechanic and next-piece preview
+- Seventh-bag randomizer for fair piece distribution
+- Rotation with wall-kick logic for SRS-style behavior
+- Line clears, combos, back-to-back chains, and T-spin detection
+- Garbage attack propagation between players
+- Elimination tracking and final standings screen
+- Match timer and round summary panel
 
-### Controls
+### Input and player management
 
-- Keyboard: WASD and arrow layouts
-- Gamepad: standard controller input with hot-plug support
-- Start/pause behavior is handled through gamepad and keyboard events
-- Controller setup supports mixed keyboard + controller players
+- Keyboard layouts for WASD and arrow-based controls
+- Gamepad detection and hot-plug support
+- Mixed controller + keyboard lobby flow
+- Player slot assignment and leave logic
+- Start, pause, and rematch flows handled through overlay UI
 
-### Audio and Effects
+### Audio and polish
 
-- Procedural music generation using Web Audio API
-- Bus-based audio mixing for master, music, SFX, and UI
-- Voice pooling to avoid excessive overlap from repeated sounds
-- Vibration support for connected gamepads
-- Animated background effects and board FX
+- Procedural music generation using the Web Audio API
+- Bus-based mixer for master, music, SFX, and UI volume
+- Voice pooling for repeated move/rotate sounds
+- Gamepad vibration support
+- Background FX and arcadelike visual effects
+- Low-performance toggle and persistent settings in localStorage
 
-### Menus and UX
+### User interface
 
-- Start screen and lobby flow
-- Settings menu with volume sliders and performance toggle
-- Controls reference overlay
-- Results screen with rematch and return-to-menu actions
-- Focus navigation for controller-first interaction
+- Full start menu, lobby screen, pause flow, settings menu, and results screen
+- Controller-first focus navigation for interactive elements
+- Settings sliders for volume and match speed tuning
+- Controls reference screen with mapping information
 
-## Project Structure
+## Project structure
 
 ```text
 Tetris/
@@ -76,114 +78,126 @@ Tetris/
 └── .git/
 ```
 
-## Key Files
+## Key files
 
 ### index.html
 
-The main application entry point. It loads the UI structure, style definitions, and script files needed for the game.
+The main application shell. It defines the game layout, overlays, UI components, and the script-loading order for the project.
 
 ### js/game.js
 
-Contains the main Tetris engine: board state, piece logic, scoring, garbage handling, state updates, and match lifecycle.
+Contains the core gameplay engine, including board state, piece movement, rotation, attack logic, scoring, combos, and the main game loop.
 
 ### js/controllerSetup.js
 
-Handles the lobby flow where players join by keyboard or gamepad, including hot-plugging and slot management.
+Handles lobby creation, player joining, slot selection, gamepad joins, and match start flow.
 
 ### js/audio.js
 
-Constructs the Web Audio-based music and sound system. It manages mixing, procedural tracks, UI sounds, and game effects.
+Implements the audio system using the browser Web Audio API, including music loops, effects, volume controls, and voice pooling.
 
 ### js/settings.js
 
-Defines the settings and controls overlays, including volume controls and gameplay configuration.
+Creates the settings and controls overlays, as well as audio and gameplay tuning controls.
 
 ### js/nav.js
 
-Provides controller focus navigation for menus and overlays.
+Provides generic focus management and keyboard/controller navigation for UI overlays.
 
-### js/effects.js and js/background.js
+### js/effects.js
 
-Handle visual effects, background animation, and game FX rendering.
+Controls arcade visual effects and board animation feedback.
+
+### js/background.js
+
+Handles animated background elements and global visual atmosphere.
 
 ### js/gamepadConfig.js
 
-Defines gamepad mappings and configuration details for supported controllers.
+Defines controller mappings and configuration metadata for supported gamepads.
 
 ### js/VibrationManager.js
 
-Handles rumble/vibration feedback for controller devices.
+Provides controller vibration and rumble handling for supported devices.
 
-## How to Run
+## Controls
 
-Because this is a static browser game, you can run it by opening the project in a browser.
+### Keyboard
 
-Recommended option:
+WASD layout:
 
-1. Open a terminal in the project folder.
-2. Start a local web server.
-3. Open the site in your browser.
+- A / D: move left / right
+- S: soft drop
+- W: hard drop
+- Q / E: rotate
+- Left Shift: hold
+- Esc: pause
 
-Example:
+Arrow layout:
+
+- Left / Right: move
+- Down: soft drop
+- Up: hard drop
+- Comma / Period: rotate
+- Right Shift: hold
+- Esc: pause
+
+### Gamepad
+
+- D-pad / left stick: move
+- Face buttons: rotate
+- Bumpers / triggers: hold-related actions
+- D-pad up or stick up: hard drop
+- Start: pause
+
+## Running the project
+
+This project is a static web app, so it can be run without a package install or build step.
+
+### Option 1: local web server
+
+From the project folder, run:
 
 ```bash
 python -m http.server 8000
 ```
 
-Then visit:
+Then open:
 
 ```text
 http://localhost:8000
 ```
 
-You can also open the index.html file directly in a browser, though a simple local server is often more reliable for browser behavior and audio initialization.
+### Option 2: open directly
 
-## Controls Reference
+You can also open index.html in a browser, but a local server is generally more reliable for browser behavior and audio initialization.
 
-### Keyboard
+## Settings and persistence
 
-- WASD layout:
-  - A / D: move left/right
-  - S: soft drop
-  - W: hard drop
-  - Q / E: rotate
-  - Left Shift: hold
-  - Esc: pause
+The game stores audio and preference settings in browser localStorage, including:
 
-- Arrow layout:
-  - Left / Right: move
-  - Down: soft drop
-  - Up: hard drop
-  - Comma / Period: rotate
-  - Right Shift: hold
-  - Esc: pause
-
-### Gamepad
-
-- D-pad or left stick: move
-- Face buttons: rotate
-- Bumpers/triggers: hold actions
-- D-pad up or stick up: hard drop
-- Start: pause
+- master, music, SFX, and UI volume
+- mute state
+- low-performance visual mode
+- lines-per-level setting for match pacing
 
 ## Notes
 
-- The project is intentionally built with no build step or package manager requirement.
-- Most configuration and state are stored in the browser via localStorage.
-- The code is structured for learning and gameplay experimentation, especially in the JS files.
-- Several backup files such as bak_game.js and bak_settings.js are included, likely as historical references or earlier versions.
+- The project includes legacy/back-up files such as bak_game.js, bak_settings.js, and bnak_nav.js for reference.
+- The code is written in plain JavaScript and is designed for experimentation and learning.
+- There is no framework or build pipeline required for normal use.
 
-## Development Notes
+## Suggested areas for editing
 
-If you want to extend the game, common editing points are:
+If you want to modify gameplay or UI behavior, the most relevant files are:
 
-- Gameplay balance and scoring: js/game.js
-- Menu and settings behavior: js/settings.js
-- Navigation and focus flow: js/nav.js
-- Audio changes: js/audio.js
-- Visual polish: js/effects.js, js/background.js
-- Input and controller configuration: js/gamepadConfig.js
+- Gameplay balance and logic: js/game.js
+- Menus and settings: js/settings.js
+- Navigation and controller focus: js/nav.js
+- Sound design: js/audio.js
+- Visual effects: js/effects.js and js/background.js
+- Input configuration: js/gamepadConfig.js
 
 ## Summary
 
-This project is a complete local multiplayer Tetris game with arcade presentation, controller support, and procedural audio, all built in front-end web technologies. It is ideal for playtesting, experimentation, and further enhancement.
+MIS TETRIS AI is a complete local multiplayer Tetris project with arcade presentation, controller compatibility, score-based pressure, garbage attacks, procedural audio, and polished menu systems. It is suitable for local play, experimentation, and further feature development.
