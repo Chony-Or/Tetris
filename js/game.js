@@ -50,6 +50,31 @@ const KICKS_I = {
   '3>0': [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]], '0>3': [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]]
 };
 
+/* =====================================================================
+ * SHARED COLLISION HELPERS
+ * ---------------------------------------------------------------------
+ * Pure, state-free versions of the per-piece cell/collision math that
+ * Player.prototype.cellsFor/checkCollision already used inline. Pulled
+ * out so the Tetris AI (js/aiController.js) can simulate hypothetical
+ * placements against a *cloned* grid without ever touching a live
+ * Player's position/rotation/current piece. Bots therefore evaluate
+ * moves using exactly the same rules a human's inputs are checked
+ * against — same wall bounds, same board-top rule — so they can't
+ * cheat or bypass gameplay mechanics.
+ * ===================================================================== */
+function cellsForShape(type, rot, px, py) {
+  return SHAPES[type][rot].map(([r, c]) => [px + r, py + c]);
+}
+function gridCollides(grid, type, rot, px, py) {
+  const cells = cellsForShape(type, rot, px, py);
+  for (const [r, c] of cells) {
+    if (c < 0 || c >= COLS) return true;
+    if (r >= TOTAL_ROWS) return true;
+    if (r >= 0 && grid[r][c]) return true;
+  }
+  return false;
+}
+
 /* ===================== AUDIO MANAGER ===================== */
 // Full bus-based AudioManager (music/sfx/ui mixing, voice pooling, fades,
 // procedural music) now lives in js/audio.js, loaded before this file.
@@ -110,6 +135,11 @@ Player.prototype.reset = function () {
   this.bag = new Bag();
   this.current = null; this.holdPiece = null; this.canHold = true;
   this.rotState = 0; this.px = 0; this.py = 0;
+  // Bumped every time `current` becomes a genuinely new piece to act on
+  // (fresh spawn, or a hold-swap). The AI bot system (aiController.js)
+  // watches this to know when to drop its old plan and think about the
+  // next placement — it never reads px/py/rotState directly for that.
+  this.spawnSeq = 0;
 
   this.score = 0; this.lines = 0; this.level = 1; this.combo = -1; this.b2b = 0;
   this.piecesPlaced = 0; this.attacksSent = 0; this.keysPressed = 0;
@@ -143,6 +173,7 @@ Player.prototype.spawnNext = function () {
   this.current = type; this.rotState = 0;
   this.px = HIDDEN - 1; this.py = 3;
   this.canHold = true; this.lockTimer = 0; this.isLocking = false; this.lockResets = 0;
+  this.spawnSeq++;
 
   // Block-out check: if the spawn cell is already occupied, the player tops out.
   if (this.checkCollision(this.px, this.py, this.rotState)) {
@@ -153,17 +184,11 @@ Player.prototype.spawnNext = function () {
 };
 
 Player.prototype.cellsFor = function (type, rot, px, py) {
-  return SHAPES[type][rot].map(([r, c]) => [px + r, py + c]);
+  return cellsForShape(type, rot, px, py);
 };
 // Collision check against board bounds and locked cells.
 Player.prototype.checkCollision = function (px, py, rot) {
-  const cells = this.cellsFor(this.current, rot, px, py);
-  for (const [r, c] of cells) {
-    if (c < 0 || c >= COLS) return true;
-    if (r >= TOTAL_ROWS) return true;
-    if (r >= 0 && this.grid[r][c]) return true;
-  }
-  return false;
+  return gridCollides(this.grid, this.current, rot, px, py);
 };
 // Recomputes the ghost-piece landing row (used for the drop preview outline).
 Player.prototype.updateGhost = function () {
@@ -261,6 +286,7 @@ Player.prototype.hold = function () {
       if (!this.checkCollision(this.px - 1, this.py, this.rotState)) this.px -= 1;
     }
     this.updateGhost();
+    this.spawnSeq++; // swapped in a different piece — treat like a fresh spawn for planning purposes
   }
   this.canHold = false;
 };
@@ -681,6 +707,7 @@ const MatchManager = {
       const p = new Player(i, refs[i - 1], assignment, cell);
       this.players.push(p);
       if (assignment.type === 'gamepad') vibrationManager.assignController(i, assignment.gamepadIndex);
+      if (assignment.type === 'bot' && typeof AIController !== 'undefined') AIController.resetPlayer(i);
     }
     updateControllerStatusUI();
   },
@@ -730,6 +757,7 @@ const MatchManager = {
     this.players.forEach(p => {
       p.reset();
       vibrationManager.rumblePlayer(p.id, RUMBLE_PROFILES.GAME_START);
+      if (p.assignment.type === 'bot' && typeof AIController !== 'undefined') AIController.resetPlayer(p.id);
     });
     if (typeof Effects !== 'undefined') Effects.clearAll();
     AudioManager.playMusic('gameplay');
@@ -927,7 +955,10 @@ const MatchManager = {
     document.querySelectorAll('.eliminated-tag').forEach(el => el.remove());
     document.querySelectorAll('.board-frame.eliminated').forEach(el => el.classList.remove('eliminated'));
     this.eliminationOrder = [];
-    this.players.forEach(p => { p.reset(); p.eliminated = false; p.placement = null; });
+    this.players.forEach(p => {
+      p.reset(); p.eliminated = false; p.placement = null;
+      if (p.assignment.type === 'bot' && typeof AIController !== 'undefined') AIController.resetPlayer(p.id);
+    });
     this.sharedLevel = 1;
     this.sharedGravityInterval = 800;
     FocusNav.deactivate();
@@ -948,6 +979,10 @@ const MatchManager = {
       this.elapsed = now - this.matchStartTime;
       updateTimerDisplay(this.elapsed);
       InputSystem.update(dt, this.players);
+      // AI bots think/act on their own timers here, driving the exact
+      // same Player methods (move/tryRotate/hold/hardDrop) a human's
+      // keyboard/gamepad input would — see js/aiController.js.
+      if (typeof AIController !== 'undefined') AIController.update(dt, this.players);
       this._updateSharedLevel();
       this.players.forEach(p => updatePlayerPhysics(p, dt));
       if (this.playerCount > 1) handleGarbageTransfer(this.players);
@@ -1361,6 +1396,11 @@ function updateControllerStatusUI() {
     if (p.assignment.type === 'keyboard') {
       return `<span class="on">P${p.id}: ${KEYBOARD_MAPS[p.assignment.keyboardKey].label}</span>`;
     }
+    if (p.assignment.type === 'bot') {
+      // Bots have no physical device to report connection state for —
+      // always shown "on" since an AI controller never disconnects.
+      return `<span class="on">P${p.id}: ${p.assignment.label}</span>`;
+    }
     const connected = !!pads[p.assignment.gamepadIndex];
     return `<span class="${connected ? 'on' : ''}">P${p.id}: ${p.assignment.label}${connected ? '' : ' (disconnected)'}</span>`;
   });
@@ -1423,9 +1463,15 @@ document.getElementById('resMenuBtn').addEventListener('click', () => {
   MatchManager.returnToMainMenu();
 });
 
-ControllerSetup.init((playerCount, assignments) => {
-  MatchManager.setupPlayers(playerCount, assignments);
-  MatchManager.startCountdown();
+ControllerSetup.init((humanCount, humanAssignments) => {
+  // The join lobby only ever collects HUMAN players (by device). What
+  // happens next — final match size, and whether any remaining slots
+  // are filled by AI bots or left inactive — is decided on the Match
+  // Setup screen (js/matchSetup.js), which hands back the final roster.
+  MatchSetupMenu.show(humanAssignments, (finalCount, finalAssignments) => {
+    MatchManager.setupPlayers(finalCount, finalAssignments);
+    MatchManager.startCountdown();
+  });
 });
 
 // Build a placeholder arena behind the start overlay before any match begins.

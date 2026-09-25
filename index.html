@@ -190,6 +190,18 @@ body.fx-camshake-big #app{animation:camShakeBig .45s ease;}
 .results-row .rr-name{flex:1;font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--text);}
 .results-row .rr-stats{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end;}
 .results-actions{display:flex;gap:12px;}
+
+/* ===================== CURSOR AUTO-HIDE (gameplay only) ===================== */
+body.cursor-hidden,body.cursor-hidden *{cursor:none !important;}
+
+/* ===================== MATCH SETUP SCREEN ===================== */
+.ms-slot-list{min-width:420px;max-width:620px;width:100%;}
+.ms-slot-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.ms-bot-row .ms-slot-name{font-family:var(--font-display);font-weight:700;}
+.ms-bot-row .ms-slot-type{color:var(--text-dim);font-size:11px;letter-spacing:.1em;}
+.ms-diff-group{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;}
+.ms-diff-btn{padding:5px 10px;font-size:11px;}
+.ms-inactive-row{opacity:0.4;}
 </style>
 </head>
 <body>
@@ -277,7 +289,7 @@ body.fx-camshake-big #app{animation:camShakeBig .45s ease;}
 <!-- Controller connect/disconnect toast -->
 <div class="controller-toast hidden" id="controllerToast"></div>
 
-<!-- Script load order matters: config -> vibration -> audio/fx -> nav -> controller setup flow -> core game -->
+<!-- Script load order matters: config -> vibration -> audio/fx -> nav -> controller/match setup flow -> AI -> core game -->
 <script src="js/gamepadConfig.js"></script>
 <script src="js/VibrationManager.js"></script>
 <script src="js/audio.js"></script>
@@ -286,6 +298,9 @@ body.fx-camshake-big #app{animation:camShakeBig .45s ease;}
 <script src="js/settings.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/controllerSetup.js"></script>
+<script src="js/matchSetup.js"></script>
+<script src="js/aiController.js"></script>
+<script src="js/cursorManager.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>
