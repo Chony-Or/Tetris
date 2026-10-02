@@ -43,8 +43,8 @@ const CONTROLLER_PROFILES = {
 
       ROTATE_CW: 0,
       ROTATE_CCW: 1,
-      HOLD: [4, 6],
-      ITEM: 5, // RB — use held item/power-up (only matters when Items mode is on)
+      HOLD: [4, 5, 6, 7], // LB, RB, LT, RT
+      ITEM: 3, // Y — use held item/power-up (only matters when Items mode is on)
       HARD_DROP: [12,2],
       SOFT_DROP_BTNS: [13],
       LEFT: 14,
@@ -63,9 +63,9 @@ const CONTROLLER_PROFILES = {
       RIGHT_STICK_Y: 3,
       ROTATE_CW: 2,
       ROTATE_CCW: 1,
-      HOLD: [4, 6],
-      ITEM: 5, // RB — use held item/power-up (only matters when Items mode is on)
-      HARD_DROP: [12,3],
+      HOLD: [4, 5, 6, 7], // LB, RB, LT, RT
+      ITEM: 3, // Y — use held item/power-up (only matters when Items mode is on)
+      HARD_DROP: [12],
       SOFT_DROP_BTNS: [13],
       LEFT: 14,
       RIGHT: 15,

@@ -154,8 +154,8 @@ const ControlsMenu = {
         <div class="controls-card">
           <div class="controls-card-title">Gamepad</div>
           <div>D-Pad / Stick — Move &nbsp; Face Buttons — Rotate</div>
-          <div>LB/LT — Hold &nbsp; D-Pad Up or Stick Up — Hard Drop &nbsp; Start — Pause</div>
-          <div>RB — Use Item <span style="opacity:0.6;">(Items mode only)</span></div>
+          <div>LB/LT/RB/RT — Hold &nbsp; D-Pad Up or Stick Up — Hard Drop &nbsp; Start — Pause</div>
+          <div>Y — Use Item <span style="opacity:0.6;">(Items mode only)</span></div>
         </div>
       </div>
       <button class="btn primary" id="ctlCloseBtn">Done</button>`;

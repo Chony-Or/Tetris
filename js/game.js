@@ -488,7 +488,7 @@ Player.prototype.drawGhost = function (ctx, col, row) {
 Player.prototype.renderMini = function (ctx, canvas, type) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!type) return;
-  const s = 14;
+  const s = Math.round(this.cell * 0.56);
   const shape = SHAPES[type][0];
   let minR = 99, maxR = -99, minC = 99, maxC = -99;
   shape.forEach(([r, c]) => { minR = Math.min(minR, r); maxR = Math.max(maxR, r); minC = Math.min(minC, c); maxC = Math.max(maxC, c); });
@@ -503,7 +503,7 @@ Player.prototype.renderNextQueue = function () {
   const ctx = this.nextCtx, canvas = this.nextCanvas;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const upcoming = this.bag.peek(5);
-  const s = 12, slotH = canvas.height / 5;
+  const s = Math.round(this.cell * 0.5), slotH = canvas.height / 5;
   upcoming.forEach((type, i) => {
     const shape = SHAPES[type][0];
     let minR = 99, maxR = -99, minC = 99, maxC = -99;
@@ -522,7 +522,48 @@ Player.prototype.renderNextQueue = function () {
    Builds the DOM for however many players are in this match (1-4),
    mirroring player 2/4 boards so controls face each other in local play.
 ========================================================================= */
-function cellSizeFor(n) { return n <= 2 ? 24 : (n === 3 ? 19 : 16); }
+/* =====================================================================
+ * ARENA LAYOUT CONFIG  -  SINGLE EDIT POINT FOR SIZING
+ * ---------------------------------------------------------------------
+ * BASE_CELL : internal canvas resolution per block (px). Same for every
+ *             player count; boards are scaled with CSS, so bigger = crisper.
+ * FILL      : fraction (0-1) of each player's grid cell the board may use.
+ *             Raise toward 1 for less empty space, lower for more margin.
+ * MAX_SCALE : zoom ceiling per player count (stops 1P looking absurd on
+ *             ultrawide / 4K screens).
+ * ===================================================================== */
+const ARENA_LAYOUT = {
+  BASE_CELL: 32,
+  FILL: 0.97,
+  MAX_SCALE: { 1: 2.4, 2: 2.0, 3: 1.7, 4: 1.5 }
+};
+
+function cellSizeFor(n) { return ARENA_LAYOUT.BASE_CELL; }
+
+/** Scales every player card to fill its grid cell, whatever the viewport. */
+function fitArena() {
+  const arena = document.getElementById('arena');
+  if (!arena) return;
+  const n = arena.children.length;
+  const maxScale = ARENA_LAYOUT.MAX_SCALE[n] || 1.5;
+  arena.querySelectorAll('.pcard').forEach(card => {
+    const inner = card.firstElementChild;
+    if (!inner) return;
+    const cw = card.clientWidth, ch = card.clientHeight;
+    const iw = inner.offsetWidth, ih = inner.offsetHeight; // layout size: unaffected by transform
+    if (!cw || !ch || !iw || !ih) return;
+    const s = Math.min(Math.min(cw / iw, ch / ih) * ARENA_LAYOUT.FILL, maxScale);
+    inner.style.setProperty('--fit', s.toFixed(4));
+  });
+}
+window.addEventListener('resize', fitArena);
+document.addEventListener('fullscreenchange', () => { fitArena(); setTimeout(fitArena, 150); });
+window.addEventListener('orientationchange', () => setTimeout(fitArena, 200));
+if (typeof ResizeObserver !== 'undefined') {
+  window._arenaRO = new ResizeObserver(() => fitArena());
+  const _a = document.getElementById('arena');
+  if (_a) window._arenaRO.observe(_a);
+}
 
 function buildArena(n) {
   const arena = document.getElementById('arena');
@@ -538,7 +579,7 @@ function buildArena(n) {
     const reversed = (n === 2 && i === 2) || (n === 4 && (i === 2 || i === 4));
     const card = document.createElement('div');
     card.className = 'pcard';
-    card.innerHTML = `
+    card.innerHTML = `<div class="pcard-inner">
       <div class="player-tag" style="color:${color}; text-shadow:0 0 14px ${color}88;">PLAYER ${i}</div>
       <div class="playrow ${reversed ? 'rev' : ''}">
         <div class="side-panel">
@@ -577,7 +618,7 @@ function buildArena(n) {
           </div>
         </div>
       </div>
-    `;
+    </div>`;
     arena.appendChild(card);
     const boardCanvasEl = card.querySelector('#boardCanvas' + i);
     refs.push({
@@ -589,6 +630,9 @@ function buildArena(n) {
       Effects.registerBoard(i, card.querySelector('#frame' + i), boardCanvasEl, cell);
     }
   }
+  fitArena();
+  requestAnimationFrame(fitArena);
+  if (window._arenaRO) arena.querySelectorAll('.pcard-inner').forEach(el => window._arenaRO.observe(el));
   return { refs, cell };
 }
 

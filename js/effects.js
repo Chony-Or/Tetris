@@ -455,18 +455,17 @@ const Effects = {
     }
 
     if (b.streaks) {
+      // Soft colored glow washing in from both sides (replaces the old
+      // flickering hairlines, which read as stray lines).
       ctx.save();
-      ctx.globalAlpha = b.streaks.life * 0.7;
-      const n = b.streaks.big ? 6 : 3;
-      for (let i = 0; i < n; i++) {
-        const y = (b.h / (n + 1)) * (i + 1) + (Math.random() - 0.5) * 4;
-        ctx.strokeStyle = `rgb(${b.streaks.color})`;
-        ctx.lineWidth = b.streaks.big ? 3 : 2;
-        ctx.beginPath();
-        ctx.moveTo(-20, y);
-        ctx.lineTo(b.w * (1.4 - b.streaks.life * 0.4), y);
-        ctx.stroke();
-      }
+      const reach = b.w * (b.streaks.big ? 0.45 : 0.3);
+      const a = b.streaks.life * (b.streaks.big ? 0.5 : 0.35);
+      const gl = ctx.createLinearGradient(0, 0, reach, 0);
+      gl.addColorStop(0, `rgba(${b.streaks.color},${a})`); gl.addColorStop(1, `rgba(${b.streaks.color},0)`);
+      ctx.fillStyle = gl; ctx.fillRect(0, 0, reach, b.h);
+      const gr = ctx.createLinearGradient(b.w, 0, b.w - reach, 0);
+      gr.addColorStop(0, `rgba(${b.streaks.color},${a})`); gr.addColorStop(1, `rgba(${b.streaks.color},0)`);
+      ctx.fillStyle = gr; ctx.fillRect(b.w - reach, 0, reach, b.h);
       ctx.restore();
     }
 
@@ -475,13 +474,15 @@ const Effects = {
       ctx.globalAlpha = b.trail.life;
       const grad = ctx.createLinearGradient(0, b.trail.y1, 0, b.trail.y2);
       grad.addColorStop(0, 'rgba(160,210,255,0)');
-      grad.addColorStop(1, 'rgba(160,210,255,0.55)');
+      grad.addColorStop(1, 'rgba(160,210,255,0.32)');
       ctx.fillStyle = grad;
-      ctx.fillRect(b.trail.x - 3, b.trail.y1, 6, b.trail.y2 - b.trail.y1);
+      const tw = b.cell * 0.9;
+      ctx.fillRect(b.trail.x - tw / 2, b.trail.y1, tw, b.trail.y2 - b.trail.y1);
       ctx.restore();
     }
 
-    b.particles.forEach(p => this._drawParticle(ctx, p));
+    const k = b.cell / 24; // particle sizes were authored for a 24px block
+    b.particles.forEach(p => this._drawParticle(ctx, p, k));
 
     if (b.warnPulse > 0) {
       ctx.strokeStyle = `rgba(255,45,85,${b.warnPulse * 0.8})`;
@@ -492,20 +493,22 @@ const Effects = {
     b.texts.forEach(t => this._drawFloatText(ctx, b, t));
   },
 
-  _drawParticle(ctx, p) {
+  _drawParticle(ctx, p, k) {
+    k = k || 1;
+    const sz = p.size * k;
     ctx.save();
     ctx.globalAlpha = Math.max(0, p.life);
     ctx.translate(p.x, p.y);
     ctx.rotate(p.rotation || 0);
     ctx.fillStyle = `rgb(${p.color})`;
     if (p.shape === 'spark') {
-      ctx.fillRect(-p.size, -0.7, p.size * 2, 1.4);
+      ctx.beginPath(); ctx.arc(0, 0, Math.max(1.2, sz * 0.55), 0, Math.PI * 2); ctx.fill();
     } else if (p.shape === 'diamond') {
       ctx.beginPath();
-      ctx.moveTo(0, -p.size); ctx.lineTo(p.size, 0); ctx.lineTo(0, p.size); ctx.lineTo(-p.size, 0);
+      ctx.moveTo(0, -sz); ctx.lineTo(sz, 0); ctx.lineTo(0, sz); ctx.lineTo(-sz, 0);
       ctx.closePath(); ctx.fill();
     } else {
-      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      ctx.fillRect(-sz / 2, -sz / 2, sz, sz);
     }
     ctx.restore();
   },
