@@ -43,12 +43,7 @@ const RUMBLE_PROFILES = {
     { duration: 260, weakMagnitude: 1.0, strongMagnitude: 1.0, delayAfter: 0 }
   ],
   CONTROLLER_CONNECTED: { duration: 80, weakMagnitude: 0.3, strongMagnitude: 0.2 },
-  CONTROLLER_ASSIGNED: { duration: 100, weakMagnitude: 0.5, strongMagnitude: 0.3 },
-  // Items / power-ups
-  ITEM_PICKUP: { duration: 90, weakMagnitude: 0.35, strongMagnitude: 0.2 },
-  ITEM_USE: { duration: 80, weakMagnitude: 0.3, strongMagnitude: 0.3 },
-  ITEM_RECEIVED: { duration: 220, weakMagnitude: 0.6, strongMagnitude: 0.7 },
-  ITEM_BLOCKED: { duration: 100, weakMagnitude: 0.25, strongMagnitude: 0.1 }
+  CONTROLLER_ASSIGNED: { duration: 100, weakMagnitude: 0.5, strongMagnitude: 0.3 }
 };
 
 // Minimum ms between two vibration calls on the *same* pad, to stop spam
@@ -145,11 +140,6 @@ class VibrationManager {
   rumbleGarbageImpact(playerId, amount) {
     this.rumblePlayer(playerId, amount >= 6 ? RUMBLE_PROFILES.GARBAGE_IMPACT_LARGE : RUMBLE_PROFILES.GARBAGE_IMPACT_SMALL);
   }
-
-  rumbleItemPickup(playerId) { this.rumblePlayer(playerId, RUMBLE_PROFILES.ITEM_PICKUP); }
-  rumbleItemUse(playerId) { this.rumblePlayer(playerId, RUMBLE_PROFILES.ITEM_USE); }
-  rumbleItemReceived(playerId) { this.rumblePlayer(playerId, RUMBLE_PROFILES.ITEM_RECEIVED); }
-  rumbleItemBlocked(playerId) { this.rumblePlayer(playerId, RUMBLE_PROFILES.ITEM_BLOCKED); }
 }
 
 // Single shared instance used across the whole app.

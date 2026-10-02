@@ -33,16 +33,6 @@ const SettingsMenu = {
           <label class="settings-check"><input type="checkbox" id="stMuteToggle"> Mute All</label>
           <label class="settings-check"><input type="checkbox" id="stLowPerf"> Low-Performance Visuals</label>
         </div>
-        <div class="settings-divider" style="margin:14px 0;border-top:1px solid var(--line);"></div>
-        <div class="settings-section-label" style="opacity:0.7;font-size:13px;letter-spacing:1px;margin-bottom:6px;">GAMEPLAY</div>
-        <div class="settings-row">
-          <span class="settings-label">Lines Per Level</span>
-          <input type="range" min="1" max="30" step="1" value="2" id="stLinesPerLevel" class="settings-slider">
-          <span class="settings-val" id="stVal_linesPerLevel">10</span>
-        </div>
-        <div class="settings-hint" style="opacity:0.55;font-size:12px;margin:-6px 0 10px;">
-          How many lines the leader must clear to raise everyone's speed by one level. Lower = faster-ramping, more intense matches. Applies match-wide, even mid-game.
-        </div>
         <div class="settings-btns">
           <button class="btn" id="stResetBtn">Reset to Default</button>
           <button class="btn primary" id="stCloseBtn">Done</button>
@@ -60,13 +50,6 @@ const SettingsMenu = {
       slider.addEventListener('change', () => AudioManager.buttonClick());
     });
 
-    const lplSlider = document.getElementById('stLinesPerLevel');
-    lplSlider.addEventListener('input', () => {
-      document.getElementById('stVal_linesPerLevel').textContent = lplSlider.value;
-      MatchManager.setLinesPerLevel(Number(lplSlider.value));
-    });
-    lplSlider.addEventListener('change', () => AudioManager.buttonClick());
-
     document.getElementById('stMuteToggle').addEventListener('change', (e) => {
       AudioManager.setMuted(e.target.checked);
     });
@@ -76,7 +59,6 @@ const SettingsMenu = {
     });
     document.getElementById('stResetBtn').addEventListener('click', () => {
       AudioManager.resetToDefaults();
-      MatchManager.setLinesPerLevel(10);
       this._syncControls();
       AudioManager.buttonClick();
     });
@@ -102,9 +84,6 @@ const SettingsMenu = {
     });
     document.getElementById('stMuteToggle').checked = !!AudioManager.muted;
     document.getElementById('stLowPerf').checked = !!Effects.lowPerf;
-    const lpl = MatchManager.linesPerLevel ?? 10;
-    document.getElementById('stLinesPerLevel').value = lpl;
-    document.getElementById('stVal_linesPerLevel').textContent = lpl;
   },
 
   open(returnTo) {
@@ -143,19 +122,16 @@ const ControlsMenu = {
           <div class="controls-card-title">Keyboard (WASD)</div>
           <div>A / D — Move &nbsp; S — Soft Drop &nbsp; W — Hard Drop</div>
           <div>Q / E — Rotate &nbsp; Left Shift — Hold &nbsp; Esc — Pause</div>
-          <div>C — Use Item <span style="opacity:0.6;">(Items mode only)</span></div>
         </div>
         <div class="controls-card">
           <div class="controls-card-title">Keyboard (Arrows)</div>
           <div>&larr; / &rarr; — Move &nbsp; &darr; — Soft Drop &nbsp; &uarr; — Hard Drop</div>
           <div>, / . — Rotate &nbsp; Right Shift — Hold &nbsp; Esc — Pause</div>
-          <div>/ — Use Item <span style="opacity:0.6;">(Items mode only)</span></div>
         </div>
         <div class="controls-card">
           <div class="controls-card-title">Gamepad</div>
           <div>D-Pad / Stick — Move &nbsp; Face Buttons — Rotate</div>
-          <div>LB/LT — Hold &nbsp; D-Pad Up or Stick Up — Hard Drop &nbsp; Start — Pause</div>
-          <div>RB — Use Item <span style="opacity:0.6;">(Items mode only)</span></div>
+          <div>Bumpers/Triggers — Hold &nbsp; D-Pad Up or Stick Up — Hard Drop &nbsp; Start — Pause</div>
         </div>
       </div>
       <button class="btn primary" id="ctlCloseBtn">Done</button>`;

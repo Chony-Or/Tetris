@@ -164,14 +164,6 @@ const AudioManager = {
   controllerWarn() { this._tone(this.buses.ui, 220, 0.15, 'square', 0.2, 140); },
   controllerReconnect() { this._tone(this.buses.ui, 440, 0.1, 'triangle', 0.2, 660); },
 
-  /* =================== ITEMS / POWER-UPS =================== */
-  itemPickup() { [520, 740, 980].forEach((f, i) => setTimeout(() => this._tone(this.buses.ui, f, 0.1, 'triangle', 0.22), i * 60)); },
-  itemWasted() { this._tone(this.buses.ui, 300, 0.1, 'square', 0.14, 180); },
-  itemUseSelf() { this._tone(this.buses.sfx, 600, 0.12, 'triangle', 0.26, 900); },
-  itemUseOffense() { this._tone(this.buses.sfx, 240, 0.1, 'sawtooth', 0.26); this._tone(this.buses.sfx, 480, 0.14, 'sawtooth', 0.22, 760); },
-  itemReceived() { this._tone(this.buses.sfx, 180, 0.22, 'sawtooth', 0.28, 90); },
-  itemBlocked() { this._tone(this.buses.ui, 880, 0.08, 'square', 0.3); this._tone(this.buses.ui, 1100, 0.1, 'square', 0.24); },
-
   /* =================== PROCEDURAL MUSIC =================== */
   // Each track is a short chord/arp progression played on a loop with a
   // gentle fade so switching tracks never pops.

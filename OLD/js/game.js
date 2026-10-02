@@ -165,8 +165,6 @@ Player.prototype.reset = function () {
 
   this.lockFlash = 0; this.clearFlashRows = []; this.clearFlashTimer = 0;
 
-  if (typeof ItemsSystem !== 'undefined') ItemsSystem.resetPlayerState(this.id);
-
   this.spawnNext();
 };
 
@@ -370,10 +368,6 @@ Player.prototype.lockPiece = function () {
     if (this.combo > 1) vibrationManager.rumbleCombo(this.id);
   }
 
-  if (numCleared > 0 && typeof ItemsSystem !== 'undefined') {
-    ItemsSystem.onLineClear(this, { numCleared, isTspin, combo: this.combo });
-  }
-
   this.piecesPlaced++;
   // NOTE: level/gravityInterval are no longer computed per-player here.
   // Speed is now a shared, match-wide value driven by whichever player
@@ -396,7 +390,6 @@ Player.prototype.lockPiece = function () {
  */
 Player.prototype.receiveGarbage = function (amount) {
   if (amount <= 0) return;
-  if (typeof ItemsSystem !== 'undefined' && ItemsSystem.consumeShieldIfActive(this)) return;
   this.garbageQueue.push(amount); this.pendingGarbageTotal += amount; this.garbageReceived += amount;
 };
 Player.prototype.applyGarbage = function () {
@@ -546,10 +539,6 @@ function buildArena(n) {
             <div class="mini-label">Hold</div>
             <canvas class="mini-canvas" id="holdCanvas${i}" width="80" height="${holdH}"></canvas>
           </div>
-          <div class="mini-box item-box hidden" id="itemBox${i}">
-            <div class="mini-label">Item</div>
-            <div class="item-slot" id="itemSlot${i}"><div class="item-slot-icon" id="itemIcon${i}"></div></div>
-          </div>
           <div class="stats-box" id="stats${i}">
             <div class="row"><span>Score</span><b id="score${i}">0</b></div>
             <div class="row"><span>Lines</span><b id="lines${i}">0</b></div>
@@ -567,7 +556,6 @@ function buildArena(n) {
             <div class="pill b2b" id="b2bPill${i}">B2B</div>
             <div class="pill combo" id="comboPill${i}">COMBO x0</div>
           </div>
-          <div class="item-badges" id="itemBadges${i}"></div>
         </div>
         <div class="garbage-col" id="garbageCol${i}"><div class="garbage-fill" id="garbageFill${i}" style="height:0%"></div></div>
         <div class="side-panel">
@@ -722,7 +710,6 @@ const MatchManager = {
       if (assignment.type === 'bot' && typeof AIController !== 'undefined') AIController.resetPlayer(i);
     }
     updateControllerStatusUI();
-    if (typeof ItemsSystem !== 'undefined') ItemsSystem.init(this.players, !!this.itemsEnabled);
   },
 
   /** "Change Players" from the results screen: back to the join lobby, keeping nobody pre-assigned. */
@@ -773,7 +760,6 @@ const MatchManager = {
       if (p.assignment.type === 'bot' && typeof AIController !== 'undefined') AIController.resetPlayer(p.id);
     });
     if (typeof Effects !== 'undefined') Effects.clearAll();
-    if (typeof ItemsSystem !== 'undefined') ItemsSystem.resetMatch(this.players);
     AudioManager.playMusic('gameplay');
   },
 
@@ -975,7 +961,6 @@ const MatchManager = {
     });
     this.sharedLevel = 1;
     this.sharedGravityInterval = 800;
-    if (typeof ItemsSystem !== 'undefined') ItemsSystem.resetMatch(this.players);
     FocusNav.deactivate();
     this.startCountdown();
   },
@@ -999,7 +984,6 @@ const MatchManager = {
       // keyboard/gamepad input would — see js/aiController.js.
       if (typeof AIController !== 'undefined') AIController.update(dt, this.players);
       this._updateSharedLevel();
-      if (typeof ItemsSystem !== 'undefined') ItemsSystem.update(dt, this.players);
       this.players.forEach(p => updatePlayerPhysics(p, dt));
       if (this.playerCount > 1) handleGarbageTransfer(this.players);
       this.checkEndConditions();
@@ -1160,8 +1144,7 @@ function updatePlayerPhysics(p, dt) {
   } else {
     p.isLocking = false; p.lockTimer = 0;
     p.gravityTimer += dt * (p.softDropping ? 18 : 1);
-    const gravityMult = (typeof ItemsSystem !== 'undefined') ? ItemsSystem.gravityMultiplier(p) : 1;
-    if (p.gravityTimer >= p.gravityInterval * gravityMult) {
+    if (p.gravityTimer >= p.gravityInterval) {
       p.gravityTimer = 0;
       if (!p.checkCollision(p.px + 1, p.py, p.rotState)) { p.px++; p.updateGhost(); }
     }
@@ -1209,7 +1192,6 @@ const InputSystem = {
     else if (code === map.ccw) { p.tryRotate(-1); acted = true; }
     else if (code === map.hard) { p.hardDrop(); acted = true; }
     else if (code === map.hold) { p.hold(); acted = true; }
-    else if (map.item && code === map.item) { if (typeof ItemsSystem !== 'undefined') ItemsSystem.tryUse(p); acted = true; }
     if (acted) p.keysPressed++;
   },
 
@@ -1303,11 +1285,6 @@ const GamepadSystem = {
     // HOLD
     if (profile.HOLD.some(btn => justPressed(btn))) {
       p.hold();
-    }
-
-    // ITEM / POWER-UP (only does anything meaningful when Items mode is on)
-    if (profile.ITEM !== undefined && justPressed(profile.ITEM)) {
-      if (typeof ItemsSystem !== 'undefined') ItemsSystem.tryUse(p);
     }
 
     // ======================================================
@@ -1491,8 +1468,7 @@ ControllerSetup.init((humanCount, humanAssignments) => {
   // happens next — final match size, and whether any remaining slots
   // are filled by AI bots or left inactive — is decided on the Match
   // Setup screen (js/matchSetup.js), which hands back the final roster.
-  MatchSetupMenu.show(humanAssignments, (finalCount, finalAssignments, itemsEnabled) => {
-    MatchManager.itemsEnabled = !!itemsEnabled;
+  MatchSetupMenu.show(humanAssignments, (finalCount, finalAssignments) => {
     MatchManager.setupPlayers(finalCount, finalAssignments);
     MatchManager.startCountdown();
   });

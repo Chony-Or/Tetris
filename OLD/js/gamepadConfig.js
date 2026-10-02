@@ -43,8 +43,7 @@ const CONTROLLER_PROFILES = {
 
       ROTATE_CW: 0,
       ROTATE_CCW: 1,
-      HOLD: [4, 6],
-      ITEM: 5, // RB — use held item/power-up (only matters when Items mode is on)
+      HOLD: [4, 5, 6, 7],
       HARD_DROP: [12,2],
       SOFT_DROP_BTNS: [13],
       LEFT: 14,
@@ -63,8 +62,7 @@ const CONTROLLER_PROFILES = {
       RIGHT_STICK_Y: 3,
       ROTATE_CW: 2,
       ROTATE_CCW: 1,
-      HOLD: [4, 6],
-      ITEM: 5, // RB — use held item/power-up (only matters when Items mode is on)
+      HOLD: [4, 5, 6, 7],
       HARD_DROP: [12,3],
       SOFT_DROP_BTNS: [13],
       LEFT: 14,
@@ -119,11 +117,11 @@ const KEYBOARD_MAPS = {
   KB1: {
     label: 'Keyboard (WASD)',
     left: 'KeyA', right: 'KeyD', soft: 'KeyS', hard: 'KeyW',
-    ccw: 'KeyQ', cw: 'KeyE', hold: 'ShiftLeft', item: 'KeyC', pause: 'Escape'
+    ccw: 'KeyQ', cw: 'KeyE', hold: 'ShiftLeft', pause: 'Escape'
   },
   KB2: {
     label: 'Keyboard (Arrows)',
     left: 'ArrowLeft', right: 'ArrowRight', soft: 'ArrowDown', hard: 'ArrowUp',
-    ccw: 'Comma', cw: 'Period', hold: 'ShiftRight', item: 'Slash', pause: 'Escape'
+    ccw: 'Comma', cw: 'Period', hold: 'ShiftRight', pause: 'Escape'
   }
 };

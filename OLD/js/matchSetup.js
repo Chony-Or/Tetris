@@ -35,11 +35,9 @@ const MatchSetupMenu = {
   humanAssignments: [],
   matchSize: 2,
   botDifficulty: {}, // 0-based slot index (>= human count) -> difficulty string
-  itemsEnabled: false, // Items & Power-ups mode — OFF by default, opt-in per match
   onComplete: null,
   _savedMatchSize: null,
   _savedBotDifficulty: null,
-  _savedItemsEnabled: null,
 
   init() {
     if (document.getElementById('matchSetupOverlay')) return;
@@ -50,12 +48,6 @@ const MatchSetupMenu = {
       <div class="logo" style="font-size:30px;">MATCH SETUP</div>
       <div class="overlay-sub" id="msSub" style="max-width:640px;"></div>
       <div class="player-count-select" id="msSizeSelect"></div>
-      <label class="settings-check ms-items-toggle" style="display:flex;align-items:center;gap:8px;justify-content:center;margin:10px 0;cursor:pointer;">
-        <input type="checkbox" id="msItemsToggle"> Items &amp; Power-ups
-      </label>
-      <div class="controls-hint ms-items-hint" style="max-width:560px;opacity:0.65;margin:-4px 0 10px;">
-        Clearing a Tetris, a T-spin, or a 3+ combo can award a power-up. Offensive items always target whoever's currently in the lead — a built-in catch-up mechanic, fair for everyone. Off by default.
-      </div>
       <div class="cs-list ms-slot-list" id="msSlotList"></div>
       <button class="btn primary" id="msStartBtn">Start Match</button>
       <div class="controls-hint" style="max-width:560px;">Bots play by the same rules as everyone else — same gravity, collisions, and lock delay. Higher difficulty means faster, sharper play.</div>
@@ -66,10 +58,6 @@ const MatchSetupMenu = {
     this.els.slotList = overlay.querySelector('#msSlotList');
     this.els.sub = overlay.querySelector('#msSub');
     overlay.querySelector('#msStartBtn').addEventListener('click', () => this._finish());
-    overlay.querySelector('#msItemsToggle').addEventListener('change', (e) => {
-      this.itemsEnabled = e.target.checked;
-      if (window.AudioManager) AudioManager.buttonClick();
-    });
   },
 
   _loadSaved() {
@@ -79,7 +67,6 @@ const MatchSetupMenu = {
         const s = JSON.parse(raw);
         if (Number.isFinite(s.matchSize)) this._savedMatchSize = s.matchSize;
         if (s.botDifficulty && typeof s.botDifficulty === 'object') this._savedBotDifficulty = s.botDifficulty;
-        if (typeof s.itemsEnabled === 'boolean') this._savedItemsEnabled = s.itemsEnabled;
       }
     } catch (e) { /* ignore corrupt settings */ }
   },
@@ -88,8 +75,7 @@ const MatchSetupMenu = {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
         matchSize: this.matchSize,
-        botDifficulty: this.botDifficulty,
-        itemsEnabled: this.itemsEnabled
+        botDifficulty: this.botDifficulty
       }));
     } catch (e) { /* storage unavailable — ignore */ }
   },
@@ -115,9 +101,7 @@ const MatchSetupMenu = {
     for (let i = humanCount; i < this.MAX_SLOTS; i++) {
       this.botDifficulty[i] = (this._savedBotDifficulty && this._savedBotDifficulty[i]) || 'normal';
     }
-    this.itemsEnabled = !!this._savedItemsEnabled;
     this._render();
-    this.els.overlay.querySelector('#msItemsToggle').checked = this.itemsEnabled;
     this.els.overlay.classList.remove('hidden');
     FocusNav.push(this.els.overlay, () => {
       // Back out of Match Setup returns to the join lobby so humans can
@@ -192,9 +176,8 @@ const MatchSetupMenu = {
     this.els.overlay.classList.add('hidden');
     FocusNav.pop();
     const size = this.matchSize;
-    const itemsEnabled = this.itemsEnabled;
     const complete = this.onComplete;
     this.onComplete = null;
-    if (complete) complete(size, assignments, itemsEnabled);
+    if (complete) complete(size, assignments);
   }
 };
