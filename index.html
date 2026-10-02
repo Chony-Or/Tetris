@@ -254,7 +254,10 @@ body.cursor-hidden,body.cursor-hidden *{cursor:none !important;}
     Enjoy the game and explore what's possible with modern AI-powered development.
 
   </div>
-  <button class="btn primary" id="openSetupBtn">Press Start</button>
+  <div class="start-actions">
+    <button class="btn primary" id="openSetupBtn">Press Start</button>
+    <button class="btn" id="openManualBtn">Game Manual</button>
+  </div>
   <div class="controls-hint" style="max-width:560px;">
     On the next screen, press any button on a controller or a movement key on a keyboard layout to join. No mouse required anywhere in the game.<br>
     <b>Both</b> Esc / controller Start = pause &nbsp; R restart (game over)
@@ -309,6 +312,7 @@ body.cursor-hidden,body.cursor-hidden *{cursor:none !important;}
 <script src="js/aiController.js"></script>
 <script src="js/cursorManager.js"></script>
 <script src="js/items.js"></script>
+<script src="js/manual.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

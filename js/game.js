@@ -808,8 +808,9 @@ const MatchManager = {
   beginPlay() {
     this.state = 'playing';
     document.getElementById('matchState').textContent = this.playerCount === 1 ? 'SOLO' : 'BATTLE';
-    document.getElementById('centerMsgOverlay').classList.add('hidden');
-    document.getElementById('centerMsgZone').innerHTML = '';
+    const centerOverlay = document.getElementById('centerMsgOverlay');
+    centerOverlay.classList.add('hidden');
+    document.getElementById('centerMsgZone').replaceChildren();
     this.matchStartTime = performance.now();
     this.players.forEach(p => {
       p.reset();
@@ -849,6 +850,7 @@ const MatchManager = {
         <button class="btn" id="pmRestartBtn">Restart</button>
         <button class="btn" id="pmAudioBtn">Audio Settings</button>
         <button class="btn" id="pmControlsBtn">Controls</button>
+        <button class="btn" id="pmManualBtn">Game Manual</button>
         <button class="btn" id="pmMenuBtn">Exit to Main Menu</button>
       </div>`;
     document.getElementById('pmResumeBtn').addEventListener('click', () => this.resumeFromPause());
@@ -861,6 +863,7 @@ const MatchManager = {
       overlay.classList.add('hidden');
       ControlsMenu.open(() => { overlay.classList.remove('hidden'); this.showPauseMenu(); });
     });
+    document.getElementById('pmManualBtn').addEventListener('click', () => ManualGuide.open());
     document.getElementById('pmMenuBtn').addEventListener('click', () => this.returnToMainMenu());
     FocusNav.push(overlay, () => this.resumeFromPause());
     document.getElementById('hintBar').classList.add('show');

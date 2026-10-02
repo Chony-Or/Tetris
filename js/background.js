@@ -55,7 +55,7 @@ const BackgroundFX = {
   _loop() {
     if (!this.running) return;
     const ctx = this.ctx;
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     this.particles.forEach(p => {
       p.x += p.vx; p.y += p.vy;
       if (p.y < -10) { p.y = window.innerHeight + 10; p.x = Math.random() * window.innerWidth; }

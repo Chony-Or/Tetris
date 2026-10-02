@@ -534,7 +534,7 @@ const Effects = {
 
   _renderGlobal() {
     const ctx = this.globalCtx;
-    ctx.clearRect(0, 0, this.globalCanvas.width, this.globalCanvas.height);
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
     this.globalParticles.forEach(p => {
       ctx.save();
