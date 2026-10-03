@@ -200,9 +200,6 @@ Player.prototype.updateGhost = function () {
 };
 Player.prototype.move = function (dx) {
   if (!this.alive) return false;
-  // 4-row power-up picker: LEFT/RIGHT move the picker cursor instead of the piece.
-  // Returning false also stops the ARR "while (p.move(dir))" loop from spinning.
-  if (typeof ItemsSystem !== 'undefined' && ItemsSystem.interceptMove(this, dx)) return false;
   this.lastActionAt = performance.now();
   if (!this.checkCollision(this.px, this.py + dx, this.rotState)) {
     this.py += dx; this.updateGhost(); this.resetLockIfGrounded(); AudioManager.move();
@@ -225,6 +222,8 @@ Player.prototype.softDrop = function () {
 };
 Player.prototype.hardDrop = function () {
   if (!this.alive) return;
+  // D-Pad Up selects the previous picker option instead of hard-dropping.
+  if (typeof ItemsSystem !== 'undefined' && ItemsSystem.interceptPickerVertical(this, -1)) return;
   this.lastActionAt = performance.now();
   const startRow = this.px;
   let dist = 0;
@@ -238,6 +237,8 @@ Player.prototype.hardDrop = function () {
 // Attempts an SRS rotation with wall-kicks; dir: 1=CW, -1=CCW, 2=180.
 Player.prototype.tryRotate = function (dir) {
   if (!this.alive) return;
+  // Picker navigation uses D-Pad Up/Down; face-button rotation is suppressed.
+  if (typeof ItemsSystem !== 'undefined' && ItemsSystem.interceptRotate(this)) return;
   this.lastActionAt = performance.now();
   const type = this.current; const from = this.rotState;
   let to;
@@ -278,7 +279,10 @@ Player.prototype.checkTspinSetup = function () {
   }
 };
 Player.prototype.hold = function () {
-  if (!this.alive || !this.canHold) return;
+  if (!this.alive) return;
+  // 4-row power-up picker: HOLD confirms the highlighted choice.
+  if (typeof ItemsSystem !== 'undefined' && ItemsSystem.interceptHold(this)) return;
+  if (!this.canHold) return;
   this.lastActionAt = performance.now();
   AudioManager.hold();
   if (typeof Effects !== 'undefined') Effects.holdPulse(this.id);
@@ -1200,7 +1204,11 @@ function updatePlayerPhysics(p, dt) {
   if (!p.alive) return;
   // Insert queued garbage once we're not actively locking a piece down,
   // so garbage rows never appear mid-placement.
-  if (p.garbageQueue.length > 0 && !p.isLocking) p.applyGarbage();
+  // Items mode: while the 4-row picker is open, this player's gravity + lock delay are frozen;
+  // while invincible, incoming garbage stays queued (it lands once invincibility ends).
+  if (typeof ItemsSystem !== 'undefined' && ItemsSystem.isPickerOpen(p)) return;
+  const garbageHeld = (typeof ItemsSystem !== 'undefined') && ItemsSystem.isInvincible(p);
+  if (p.garbageQueue.length > 0 && !p.isLocking && !garbageHeld) p.applyGarbage();
   if (!p.alive) return;
 
   const grounded = p.checkCollision(p.px + 1, p.py, p.rotState);
@@ -1346,17 +1354,24 @@ const GamepadSystem = {
       return;
     }
 
-    // ROTATION
-    if (justPressed(profile.ROTATE_CW)) p.tryRotate(1);
-    if (justPressed(profile.ROTATE_CCW)) p.tryRotate(-1);
+    const pickerWasOpen = typeof ItemsSystem !== 'undefined' && ItemsSystem.isPickerOpen(p);
+    const pickerConfirmPressed = pickerWasOpen && profile.CONFIRM !== undefined && justPressed(profile.CONFIRM);
+
+    // A confirms the highlighted power-up while the picker is open; otherwise it rotates.
+    if (pickerWasOpen) {
+      if (pickerConfirmPressed) ItemsSystem.tryUse(p);
+    } else {
+      if (justPressed(profile.ROTATE_CW)) p.tryRotate(1);
+      if (justPressed(profile.ROTATE_CCW)) p.tryRotate(-1);
+    }
 
     // HOLD
-    if (profile.HOLD.some(btn => justPressed(btn))) {
+    if (!pickerConfirmPressed && profile.HOLD.some(btn => justPressed(btn))) {
       p.hold();
     }
 
-    // ITEM / POWER-UP (only does anything meaningful when Items mode is on)
-    if (profile.ITEM !== undefined && justPressed(profile.ITEM)) {
+    // Y uses held items during play; it is not a picker confirmation button.
+    if (!pickerWasOpen && profile.ITEM !== undefined && justPressed(profile.ITEM)) {
       if (typeof ItemsSystem !== 'undefined') ItemsSystem.tryUse(p);
     }
 
@@ -1377,6 +1392,11 @@ const GamepadSystem = {
     const hardDropButtonPressed = hardDropButtons.some(btn =>
         justPressed(btn)
     );
+
+    const softDropButtons = Array.isArray(profile.SOFT_DROP_BTNS)
+      ? profile.SOFT_DROP_BTNS
+      : [profile.SOFT_DROP_BTNS];
+    const softDropButtonPressed = softDropButtons.some(btn => justPressed(btn));
  
     // Left Stick Y
     const leftStickY =
@@ -1391,6 +1411,10 @@ const GamepadSystem = {
         (stickUp && !this.prevLeftStickUp[idx])
     ) {
         p.hardDrop();
+    }
+
+    if (softDropButtonPressed && typeof ItemsSystem !== 'undefined') {
+      ItemsSystem.interceptPickerVertical(p, 1);
     }
 
     this.prevLeftStickUp[idx] = stickUp;

@@ -10,7 +10,11 @@
  *   Player.reset()          -> ItemsSystem.resetPlayerState(id)
  *   Player.lockPiece()      -> ItemsSystem.onLineClear(player, info)
  *   Player.receiveGarbage() -> ItemsSystem.consumeShieldIfActive(player)
- *   Player.move()           -> ItemsSystem.interceptMove(player, dir)   [picker cursor]
+ *   Player.hardDrop()       -> ItemsSystem.interceptPickerVertical(player, -1)
+ *   Gamepad D-Pad Down      -> ItemsSystem.interceptPickerVertical(player, +1)
+ *   Player.tryRotate()      -> ItemsSystem.interceptRotate(player) [picker input lock]
+ *   Player.hold()           -> ItemsSystem.interceptHold(player)        [picker confirm]
+ *   updatePlayerPhysics()   -> ItemsSystem.isPickerOpen / isInvincible  [freeze + garbage delay]
  *   updatePlayerPhysics()   -> ItemsSystem.gravityMultiplier(player)
  *   MatchManager.loop()     -> ItemsSystem.update(dt, players)
  *   MatchManager.setupPlayers() -> ItemsSystem.init(players, enabled)
@@ -28,8 +32,13 @@
  *        1       | roll on DROP_TABLES[1]  -> tier 1 only
  *        2       | roll on DROP_TABLES[2]  -> tier 1 + tier 2 (tier 2 favored)
  *        3       | roll on DROP_TABLES[3]  -> tier 1 + 2 + 3 (tier 3 favored)
- *        4       | NO roll. Invincibility for INVINCIBILITY_MS (10s) and a
- *                | picker opens: choose ANY power-up, used immediately.
+ *        4       | NO roll. Invincibility for INVINCIBILITY_MS (5s) and a
+ *                | picker opens with 3 options (Shield always + 2 random
+ *                | tier 2-3). Pick one (and, for attacks, a target).
+ *   A T-spin counts as +1 row for the roll (capped at 3, so it never
+ *   grants invincibility).
+ *   Not every clear pays out: ACQUIRE_CHANCE_BY_ROWS sets the chance
+ *   per clear size (45% / 70% / 90%) before the tier roll happens.
  *
  * A roll is two steps:
  *   STEP 1 (tier):  DROP_TABLES[rows] gives a percentage per tier, e.g.
@@ -53,7 +62,10 @@
  * FAIRNESS: every player — human, bot, keyboard, gamepad — rolls on the
  * same tables. One held item max. Offensive items auto-target the match
  * leader (most lines). Shield blocks the next attack. Invincibility
- * blocks ALL garbage and offensive items while it lasts (it isn't consumed).
+ * blocks offensive items while it lasts (not consumed). Incoming GARBAGE is
+ * not cancelled — it queues and lands when invincibility ends, so it's a
+ * timing tool, not a free dodge. Offensive items are telegraphed
+ * (TELEGRAPH_MS) so the victim can still react (e.g. get a Shield up).
  * =====================================================================
  */
 "use strict";
@@ -70,19 +82,36 @@ const ITEM_CONFIG = {
     3: { 1: 15, 2: 30, 3: 55 }
   },
 
+  // Chance that a clear of N rows pays out at all (before the tier roll).
+  // The "Item Drop Chance" slider in Settings scales these (100% = as written).
+  ACQUIRE_CHANCE_BY_ROWS: { 1: 0.45, 2: 0.70, 3: 0.90 },
+
+  // A T-spin line clear counts as this many extra rows (capped at 3 rows
+  // so it can never grant invincibility). Set 0 to disable.
+  TSPIN_ROW_BONUS: 1,
+
   // Clearing this many rows (or more) grants invincibility + the picker
   // instead of a random roll.
   INVINCIBILITY_ROWS: 4,
-  INVINCIBILITY_MS: 10000,
+  INVINCIBILITY_MS: 5000,   // blocks offensive items; incoming garbage queues until it ends
 
-  // Picker controls: LEFT/RIGHT (keyboard, D-Pad, stick) move the cursor,
-  // the ITEM button uses the highlighted power-up.
-  PICKER_CURSOR_REPEAT_MS: 140, // throttle so held DAS doesn't spin the cursor
+  // 4-row picker. Piece gravity/lock delay are PAUSED while it is open.
+  // D-Pad Up/Down cycle the choice; A or HOLD confirms. Y remains item-use during play.
+  PICKER_OPTIONS: 3,            // how many choices are offered
+  PICKER_GUARANTEED: ['SHIELD'],// always offered (if it exists in ITEM_DEFS)
+  PICKER_POOL_TIERS: [2, 3],    // the rest are random from these tiers
+  PICKER_MS: 5000,              // total gravity pause for item + optional target selection
+  PICKER_TARGET_MS: 1500,       // target selection is capped by the total picker deadline
+
+  // Offensive items warn the victim this long before they land.
+  TELEGRAPH_MS: 800,
 
   // Blast item
   BLAST_RADIUS: 3,        // cells, Euclidean distance from the blast centre
   BLAST_INNER_MARGIN: 2,  // blast centre must be this many columns in from each wall
   BLAST_APPLY_GRAVITY: false, // true = blocks above the hole fall down afterwards
+  BLAST_JUNK_CHANCE: 0.30,    // chance each destroyed block turns into junk garbage instead (0 = off)
+  BLAST_BONUS_GARBAGE: 1,     // garbage lines also sent on top of the crater (0 = off)
 
   BOT_USE_DELAY_MS: 650
 };
@@ -100,15 +129,15 @@ const ITEM_DEFS = {
   /* ---------------- TIER 1 (unlocked by 1 row) ---------------- */
   SLOWMO: {
     id: 'SLOWMO', label: 'Slow-Mo', icon: '🐌', kind: 'self', color: '196,107,255',
-    tier: 1, weight: 1, duration: 6000, gravityMult: 1.9, desc: 'Your gravity slows down for 6s.'
+    tier: 1, weight: 1, duration: 6000, gravityMult: 2.4, desc: 'Your gravity slows way down for 6s.'
   },
   FOG: {
     id: 'FOG', label: 'Fog', icon: '🌫️', kind: 'offense', color: '190,190,205',
-    tier: 1, weight: 1, duration: 5000, desc: "Clouds the leader's board for 5s."
+    tier: 1, weight: 1, duration: 7000, desc: "Clouds the leader's board for 7s."
   },
   ROW_ERASE: {
     id: 'ROW_ERASE', label: 'Row Erase', icon: '🧽', kind: 'self', color: '120,220,170',
-    tier: 1, weight: 1, rows: 1, desc: 'Removes the bottom row of your own board.'
+    tier: 1, weight: 0.5, rows: 1, desc: 'Removes the bottom row of your own board.'
   },
 
   /* ---------------- TIER 2 (unlocked by 2 rows) ---------------- */
@@ -132,7 +161,7 @@ const ITEM_DEFS = {
   /* ---------------- TIER 3 (unlocked by 3 rows) ---------------- */
   BLAST: {
     id: 'BLAST', label: 'Blast', icon: '🧨', kind: 'offense', color: '255,120,40',
-    tier: 3, weight: 1, desc: "Blows up the leader's inner blocks within a 3-block radius."
+    tier: 3, weight: 1, desc: "Blows up the leader's inner blocks (3-block radius), leaves junk + 1 garbage."
   },
   GARBAGE_MEGA: {
     id: 'GARBAGE_MEGA', label: 'Garbage++', icon: '☄️', kind: 'offense', color: '255,60,90',
@@ -140,7 +169,7 @@ const ITEM_DEFS = {
   },
   MEGA_ERASE: {
     id: 'MEGA_ERASE', label: 'Mega Erase', icon: '🌊', kind: 'self', color: '90,200,255',
-    tier: 3, weight: 1, rows: 3, desc: 'Removes the bottom 3 rows of your own board.'
+    tier: 3, weight: 1, rows: 2, desc: 'Removes the bottom 2 rows of your own board.'
   }
 };
 
@@ -170,7 +199,7 @@ const ITEM_EFFECTS = {
     sys._pulseFrame(target.id, def.color, 'item-selfuse-flash');
   },
   ROW_ERASE(ctx) { ctx.sys._eraseBottomRows(ctx.target, ctx.def.rows || 1, ctx.def); },
-  MEGA_ERASE(ctx) { ctx.sys._eraseBottomRows(ctx.target, ctx.def.rows || 3, ctx.def); },
+  MEGA_ERASE(ctx) { ctx.sys._eraseBottomRows(ctx.target, ctx.def.rows || 2, ctx.def); },
 
   GARBAGE_PLUS({ target, def }) { target.receiveGarbage(def.amount); },
   GARBAGE_MEGA({ target, def }) { target.receiveGarbage(def.amount); },
@@ -192,10 +221,11 @@ const ITEM_EFFECTS = {
 
 const ItemsSystem = {
   enabled: false,
-  ACQUIRE_CHANCE: 0.75,   // chance a qualifying (1-3 row) clear actually awards an item
+  ACQUIRE_CHANCE: 1.0,    // SCALE on ITEM_CONFIG.ACQUIRE_CHANCE_BY_ROWS (1.0 = as written; settings slider)
   LINES_TO_QUALIFY: 1,    // minimum rows cleared before items can drop at all
-  SETTINGS_KEY: 'tetrisai.itemSettings.v2', // v2: old saved "lines" value had different meaning
+  SETTINGS_KEY: 'tetrisai.itemSettings.v3', // v3: drop chance is now a scale on per-row chances
   state: {}, // playerId -> see resetPlayerState()
+  _pending: [], // telegraphed offensive items waiting to land: { source, target, def, t, el }
   _styleInjected: false,
 
   /* =================== LIFECYCLE =================== */
@@ -213,8 +243,10 @@ const ItemsSystem = {
   },
 
   resetMatch(players) {
+    this._pending = [];
     players.forEach(p => {
       this._removePickerDom(p.id);
+      this._clearIncoming(p.id);
       this.resetPlayerState(p.id);
       this._renderSlot(p.id);
       this._updateBadges(p.id);
@@ -228,7 +260,7 @@ const ItemsSystem = {
     this.state[playerId] = {
       held: null, shield: false,
       invincibleUntil: 0,
-      picker: null,            // { index, startedAt, endsAt, lastMoveAt } while the 4-row picker is open
+      picker: null,            // { stage, options, index, targets, tIndex, startedAt, endsAt } while the 4-row picker is open
       slowUntil: 0, heavyUntil: 0, fogUntil: 0, slowMult: 1, heavyMult: 1,
       _fogShown: false, _botTimer: 0
     };
@@ -307,14 +339,18 @@ const ItemsSystem = {
     if (!this.enabled) return;
     const st = this.state[player.id];
     if (!st) return;
-    const rows = info.numCleared;
+    let rows = info.numCleared;
 
-    // 4+ rows: invincibility + free pick (no random roll)
+    // 4+ rows: invincibility + pick (no random roll)
     if (rows >= ITEM_CONFIG.INVINCIBILITY_ROWS) { this._startInvincibility(player); return; }
+
+    // T-spin bonus: counts as extra rows, but never reaches the invincibility tier.
+    if (info.isTspin) rows = Math.min(ITEM_CONFIG.INVINCIBILITY_ROWS - 1, rows + ITEM_CONFIG.TSPIN_ROW_BONUS);
 
     if (rows < this.LINES_TO_QUALIFY) return;
     if (st.held) { this._flashWasted(player.id); return; } // no stockpiling
-    if (Math.random() >= this.ACQUIRE_CHANCE) return;
+    const base = ITEM_CONFIG.ACQUIRE_CHANCE_BY_ROWS[rows] ?? 1;
+    if (Math.random() >= Math.min(1, base * this.ACQUIRE_CHANCE)) return;
     const itemId = this.rollItem(rows);
     if (itemId) this.grantItem(player, itemId);
   },
@@ -332,9 +368,13 @@ const ItemsSystem = {
   _startInvincibility(player) {
     const st = this.state[player.id];
     const now = performance.now();
-    const ms = ITEM_CONFIG.INVINCIBILITY_MS;
-    st.invincibleUntil = now + ms;
-    st.picker = { index: 0, startedAt: now, endsAt: now + ms, lastMoveAt: 0 };
+    st.invincibleUntil = now + ITEM_CONFIG.INVINCIBILITY_MS;
+    const pickerDeadline = now + ITEM_CONFIG.PICKER_MS;
+    st.picker = {
+      stage: 'item', options: this._buildPickerOptions(), index: 0,
+      chosen: null, targets: [], tIndex: 0,
+      startedAt: now, endsAt: pickerDeadline, deadline: pickerDeadline
+    };
     const frame = document.getElementById('frame' + player.id);
     if (frame) frame.classList.add('item-invincible');
     this._renderPicker(player.id);
@@ -351,22 +391,95 @@ const ItemsSystem = {
     return !!st && st.invincibleUntil > performance.now();
   },
 
-  /** Ordered list shown in the picker: tier 1 -> 3, catalog order inside a tier. */
-  _pickerList() { return ItemCatalog.tiers().flatMap(t => ItemCatalog.inTier(t)); },
+  /** True while the 4-row picker is open — game.js freezes that player's gravity/lock timer. */
+  isPickerOpen(player) {
+    const st = this.state[player.id];
+    return !!(this.enabled && st && st.picker);
+  },
 
-  /** Called from Player.move(): while the picker is open, LEFT/RIGHT move the cursor instead of the piece. */
-  interceptMove(player, dir) {
+  /** Picker choices: the guaranteed ids first, then random picks (by weight) from PICKER_POOL_TIERS. Sorted by tier. */
+  _buildPickerOptions() {
+    const out = ITEM_CONFIG.PICKER_GUARANTEED.filter(id => ITEM_DEFS[id]).slice(0, ITEM_CONFIG.PICKER_OPTIONS);
+    const pool = ItemCatalog.ids().filter(id =>
+      ITEM_CONFIG.PICKER_POOL_TIERS.includes(ITEM_DEFS[id].tier) && !out.includes(id));
+    while (out.length < ITEM_CONFIG.PICKER_OPTIONS && pool.length) {
+      const pick = this._weightedPick(pool, id => ITEM_DEFS[id].weight ?? 1);
+      if (!pick) break;
+      out.push(pick);
+      pool.splice(pool.indexOf(pick), 1);
+    }
+    if (out.length === 0) out.push(...ItemCatalog.ids().slice(0, ITEM_CONFIG.PICKER_OPTIONS)); // misconfigured: never an empty picker
+    return out.sort((a, b) => ITEM_DEFS[a].tier - ITEM_DEFS[b].tier);
+  },
+
+  /** Living opponents, leader first (most lines, then score). */
+  _rankedOpponents(player) {
+    if (typeof MatchManager === 'undefined') return [];
+    return MatchManager.players
+      .filter(p => p.alive && p.id !== player.id)
+      .sort((a, b) => (b.lines - a.lines) || (b.score - a.score));
+  },
+
+  /** D-Pad/vertical movement cycles choices; rotation buttons are ignored while picking. */
+  interceptPickerVertical(player, dir) {
     const st = this.state[player.id];
     if (!this.enabled || !st || !st.picker) return false;
-    const now = performance.now();
-    if (now - st.picker.lastMoveAt >= ITEM_CONFIG.PICKER_CURSOR_REPEAT_MS) {
-      st.picker.lastMoveAt = now;
-      const n = this._pickerList().length;
-      st.picker.index = (st.picker.index + dir + n) % n;
-      this._renderPicker(player.id);
-      if (typeof AudioManager !== 'undefined') AudioManager.navMove();
+    const pk = st.picker;
+    const choices = pk.stage === 'item' ? pk.options : pk.targets;
+    const indexKey = pk.stage === 'item' ? 'index' : 'tIndex';
+    if (choices.length) pk[indexKey] = (pk[indexKey] + dir + choices.length) % choices.length;
+    this._renderPicker(player.id);
+    if (typeof AudioManager !== 'undefined') AudioManager.navMove();
+    return true;
+  },
+
+  interceptRotate(player) {
+    const st = this.state[player.id];
+    return !!(this.enabled && st && st.picker);
+  },
+
+  /** Player.hold hook: while the picker is open, HOLD confirms (humans only). */
+  interceptHold(player) {
+    const st = this.state[player.id];
+    if (!this.enabled || !st || !st.picker) return false;
+    if (player.assignment && player.assignment.type === 'bot') return false;
+    this._confirmPicker(player);
+    return true;
+  },
+
+  /** Confirm the highlighted option. Attacks go on to a target stage when there is more than one opponent. */
+  _confirmPicker(player) {
+    const st = this.state[player.id];
+    const pk = st && st.picker;
+    if (!pk) return;
+
+    if (pk.stage === 'item') {
+      const def = ITEM_DEFS[pk.options[pk.index]];
+      if (!def) { this._closePicker(player.id); return; }
+      if (def.kind === 'offense') {
+        const targets = this._rankedOpponents(player);
+        if (targets.length > 1) {
+          const now = performance.now();
+          const deadline = pk.deadline ?? (pk.startedAt + ITEM_CONFIG.PICKER_MS);
+          Object.assign(pk, { stage: 'target', chosen: def.id, targets, tIndex: 0, startedAt: now, endsAt: Math.min(deadline, now + ITEM_CONFIG.PICKER_TARGET_MS) });
+          this._renderPicker(player.id);
+          if (typeof AudioManager !== 'undefined') AudioManager.navConfirm();
+          return;
+        }
+        this._closePicker(player.id);
+        this._fire(player, def, targets[0]);
+        return;
+      }
+      this._closePicker(player.id);
+      this._fire(player, def);
+      return;
     }
-    return true; // swallow the move either way
+
+    // target stage
+    const def = ITEM_DEFS[pk.chosen];
+    const target = pk.targets[pk.tIndex];
+    this._closePicker(player.id);
+    if (def) this._fire(player, def, target);
   },
 
   _closePicker(playerId) {
@@ -381,13 +494,8 @@ const ItemsSystem = {
     const st = this.state[player.id];
     if (!st) return;
 
-    // Picker open: the item button uses the highlighted power-up (any power-up allowed).
-    if (st.picker) {
-      const id = this._pickerList()[st.picker.index];
-      this._closePicker(player.id);
-      if (id) this._fire(player, ITEM_DEFS[id]);
-      return;
-    }
+    // Picker open: the item button confirms the highlighted option (same as Hold).
+    if (st.picker) { this._confirmPicker(player); return; }
 
     if (!st.held) return;
     const def = ITEM_DEFS[st.held];
@@ -396,14 +504,15 @@ const ItemsSystem = {
     if (def) this._fire(player, def);
   },
 
-  _fire(player, def) {
+  /** `target` is only used by offensive items; omitted = the current leader. */
+  _fire(player, def, target) {
     if (typeof vibrationManager !== 'undefined') vibrationManager.rumbleItemUse(player.id);
     if (def.kind === 'self') {
       this._runEffect(def, player, player);
       this._burstIcon(player.id, def);
       if (typeof AudioManager !== 'undefined') AudioManager.itemUseSelf();
     } else {
-      const target = this._pickLeaderTarget(player);
+      target = (target && target.alive) ? target : this._pickLeaderTarget(player);
       if (!target) return;
       this.applyOffense(player, target, def);
       if (typeof AudioManager !== 'undefined') AudioManager.itemUseOffense();
@@ -427,20 +536,38 @@ const ItemsSystem = {
       (p.lines > best.lines || (p.lines === best.lines && p.score > best.score)) ? p : best);
   },
 
+  /**
+   * Offensive items are TELEGRAPHED: an "INCOMING" warning shows on the
+   * victim's board for TELEGRAPH_MS, then _resolveOffense() decides the
+   * outcome. Invincibility / Shield are checked at landing time, so a
+   * victim who reacts in the window can still defend.
+   */
   applyOffense(source, target, def) {
+    if (!target) return;
+    const el = this._showIncoming(target.id, def);
+    this._pending.push({ source, target, def, t: ITEM_CONFIG.TELEGRAPH_MS, el });
+    this._animateFire(source.id, target.id, def, false, true);
+    if (typeof AudioManager !== 'undefined') AudioManager.garbageWarn();
+    if (typeof vibrationManager !== 'undefined') vibrationManager.rumbleGarbageWarning(target.id);
+  },
+
+  _resolveOffense(entry) {
+    const { source, target, def, el } = entry;
+    if (el) el.remove();
+    this._pruneIncoming(target.id);
+    if (!target.alive) return;
     const tgtState = this.state[target.id];
     // Invincibility: blocked, NOT consumed.
-    if (this.isInvincible(target)) { this._blocked(target.id); this._animateFire(source.id, target.id, def, true); return; }
+    if (this.isInvincible(target)) { this._blocked(target.id); return; }
     // Shield: blocked, consumed.
     if (tgtState && tgtState.shield) {
       tgtState.shield = false;
       this._updateBadges(target.id);
       this._blocked(target.id);
-      this._animateFire(source.id, target.id, def, true);
       return;
     }
     this._runEffect(def, source, target);
-    this._animateFire(source.id, target.id, def, false);
+    this._flashImpact(target.id, def);
     if (typeof AudioManager !== 'undefined') AudioManager.itemReceived();
     if (typeof vibrationManager !== 'undefined') vibrationManager.rumbleItemReceived(target.id);
     if (typeof Effects !== 'undefined' && Effects.showDramaBanner) {
@@ -458,7 +585,7 @@ const ItemsSystem = {
   consumeShieldIfActive(player) {
     const st = this.state[player.id];
     if (!st) return false;
-    if (this.isInvincible(player)) { this._blocked(player.id); return true; } // not consumed
+    if (this.isInvincible(player)) return false; // not absorbed: garbage queues and lands when invincibility ends (see updatePlayerPhysics)
     if (st.shield) {
       st.shield = false;
       this._updateBadges(player.id);
@@ -518,38 +645,71 @@ const ItemsSystem = {
   },
 
   _blast(target, def) {
-    const center = this._blastCenter(target);
-    if (!center) return; // empty board: nothing to blow up
     const R = ITEM_CONFIG.BLAST_RADIUS;
-    for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
-      if (dr * dr + dc * dc > R * R) continue;
-      const rr = center.r + dr, cc = center.c + dc;
-      if (rr >= HIDDEN && rr < TOTAL_ROWS && cc >= 0 && cc < COLS) target.grid[rr][cc] = null;
-    }
-    if (ITEM_CONFIG.BLAST_APPLY_GRAVITY) {
-      for (let c = 0; c < COLS; c++) {
-        const col = [];
-        for (let r = TOTAL_ROWS - 1; r >= 0; r--) if (target.grid[r][c]) col.push(target.grid[r][c]);
-        for (let r = TOTAL_ROWS - 1, i = 0; r >= 0; r--, i++) target.grid[r][c] = col[i] || null;
+    const center = this._blastCenter(target);
+    if (center) {
+      const destroyed = [];
+      for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
+        if (dr * dr + dc * dc > R * R) continue;
+        const rr = center.r + dr, cc = center.c + dc;
+        if (rr >= HIDDEN && rr < TOTAL_ROWS && cc >= 0 && cc < COLS && target.grid[rr][cc]) {
+          target.grid[rr][cc] = null;
+          destroyed.push([rr, cc]);
+        }
       }
+      // Junk: some of the debris comes back as garbage blocks (never inside the falling piece).
+      if (ITEM_CONFIG.BLAST_JUNK_CHANCE > 0) {
+        let live = [];
+        try { live = target.cellsFor(target.current, target.rotState, target.px, target.py); } catch (e) { /* no active piece */ }
+        const inPiece = (r, c) => live.some(([lr, lc]) => lr === r && lc === c);
+        destroyed.forEach(([r, c]) => {
+          if (Math.random() < ITEM_CONFIG.BLAST_JUNK_CHANCE && !inPiece(r, c)) target.grid[r][c] = 'G';
+        });
+      }
+      if (ITEM_CONFIG.BLAST_APPLY_GRAVITY) {
+        for (let c = 0; c < COLS; c++) {
+          const col = [];
+          for (let r = TOTAL_ROWS - 1; r >= 0; r--) if (target.grid[r][c]) col.push(target.grid[r][c]);
+          for (let r = TOTAL_ROWS - 1, i = 0; r >= 0; r--, i++) target.grid[r][c] = col[i] || null;
+        }
+      }
+      target.updateGhost();
+      this._animateBlast(target.id, center, def);
     }
-    target.updateGhost();
-    this._animateBlast(target.id, center, def);
+    // Guaranteed sting even on a flat/empty board.
+    if (ITEM_CONFIG.BLAST_BONUS_GARBAGE > 0) target.receiveGarbage(ITEM_CONFIG.BLAST_BONUS_GARBAGE);
   },
 
   /* =================== PER-FRAME TICK =================== */
   update(dt, players) {
     if (!this.enabled) return;
     const now = performance.now();
+
+    // Telegraphed attacks: count down (pause-safe, update() only runs while playing) and land.
+    for (let i = this._pending.length - 1; i >= 0; i--) {
+      const e = this._pending[i];
+      e.t -= dt;
+      if (e.t <= 0) { this._pending.splice(i, 1); this._resolveOffense(e); }
+    }
+
     players.forEach(p => {
       const st = this.state[p.id];
       if (!st) return;
 
       if (st._fogShown && st.fogUntil <= now) this._showFog(p.id, false);
 
-      // Picker / invincibility lifecycle
-      if (st.picker && (!p.alive || now >= st.picker.endsAt)) this._closePicker(p.id);
-      if (st.picker) this._updatePickerBar(p.id);
+      // Picker lifecycle
+      const pk = st.picker;
+      if (pk) {
+        if (!p.alive) this._closePicker(p.id);
+        else if (now >= pk.endsAt) {
+          if (pk.stage === 'target') {            // ran out of time choosing a target: default to the leader
+            const def = ITEM_DEFS[pk.chosen], leader = pk.targets[0];
+            this._closePicker(p.id);
+            if (def) this._fire(p, def, leader);
+          } else this._closePicker(p.id);          // ran out of time choosing an item: nothing is used
+        } else this._updatePickerBar(p.id);
+      }
       if (st.invincibleUntil && st.invincibleUntil <= now) {
         st.invincibleUntil = 0;
         const frame = document.getElementById('frame' + p.id);
@@ -557,27 +717,30 @@ const ItemsSystem = {
       }
       this._updateBadges(p.id);
 
-      // Bots: picker -> choose, otherwise use held item, after a consistent reaction delay.
+      // Bots: choose from the picker, or use the held item, after a consistent reaction delay.
       const isBot = p.assignment && p.assignment.type === 'bot' && p.alive;
       if (isBot && (st.picker || st.held)) {
         st._botTimer += dt;
         if (st._botTimer >= ITEM_CONFIG.BOT_USE_DELAY_MS) {
           st._botTimer = 0;
-          if (st.picker) st.picker.index = Math.max(0, this._pickerList().indexOf(this._botChoose(p)));
+          if (st.picker && st.picker.stage === 'item') {
+            st.picker.index = Math.max(0, st.picker.options.indexOf(this._botChoose(p, st.picker.options)));
+          } // target stage: bots keep index 0 = the leader
           this.tryUse(p);
         }
       } else st._botTimer = 0;
     });
   },
 
-  /** Bot picker heuristic: stack tall -> heal; otherwise hit the leader with the strongest attack. */
-  _botChoose(p) {
+  /** Bot picker heuristic: tall stack -> heal/defend; otherwise the strongest attack on offer. */
+  _botChoose(p, options) {
     let top = TOTAL_ROWS;
     for (let r = HIDDEN; r < TOTAL_ROWS; r++) if (p.grid[r].some(c => c)) { top = r; break; }
     const stackHeight = TOTAL_ROWS - top;
-    const prefer = stackHeight >= 12 ? ['MEGA_ERASE', 'ROW_ERASE', 'SHIELD'] : ['BLAST', 'GARBAGE_MEGA', 'GARBAGE_PLUS', 'CLEAR_COLUMN'];
-    const found = prefer.find(id => ITEM_DEFS[id]);
-    return found || this._pickerList()[0];
+    const prefer = stackHeight >= 12
+      ? ['MEGA_ERASE', 'SHIELD', 'ROW_ERASE']
+      : ['BLAST', 'GARBAGE_MEGA', 'GARBAGE_PLUS', 'CLEAR_COLUMN'];
+    return prefer.find(id => options.includes(id)) || options[0];
   },
 
   /* =================== UI: SLOT / BADGES =================== */
@@ -625,21 +788,37 @@ const ItemsSystem = {
     const st = this.state[playerId];
     const frame = document.getElementById('frame' + playerId);
     if (!st || !st.picker || !frame) return;
+    const pk = st.picker;
     let box = frame.querySelector('.item-picker');
     if (!box) {
       box = document.createElement('div');
       box.className = 'item-picker';
       frame.appendChild(box);
     }
-    const list = this._pickerList();
-    const sel = ITEM_DEFS[list[st.picker.index]];
+    let title, rows, hint;
+    if (pk.stage === 'item') {
+      title = '⭐ PICK A POWER-UP';
+      rows = pk.options.map((id, i) => {
+        const d = ITEM_DEFS[id];
+        return `<div class="item-picker-row ${i === pk.index ? 'sel' : ''}" style="--c:${d.color}">
+          <span class="ip-icon">${d.icon}</span>
+          <span class="ip-text"><b>${d.label}</b> · T${d.tier}<br><small>${d.desc}</small></span></div>`;
+      }).join('');
+      hint = 'D-PAD ↑ / ↓ choose · A / HOLD confirm';
+    } else {
+      title = '🎯 CHOOSE TARGET';
+      rows = pk.targets.map((t, i) => {
+        const color = (typeof PLAYER_COLORS !== 'undefined' && PLAYER_COLORS[t.id - 1]) || '#ffd25f';
+        return `<div class="item-picker-row ${i === pk.tIndex ? 'sel' : ''}">
+          <span class="ip-icon">🎯</span>
+          <span class="ip-text"><b style="color:${color}">PLAYER ${t.id}</b>${i === 0 ? ' · leader' : ''}</span></div>`;
+      }).join('');
+      hint = 'D-PAD ↑ / ↓ choose · A / HOLD fire (no pick = leader)';
+    }
     box.innerHTML = `
-      <div class="item-picker-title">⭐ PICK A POWER-UP</div>
-      <div class="item-picker-grid">
-        ${list.map((id, i) => `<div class="item-picker-opt t${ITEM_DEFS[id].tier} ${i === st.picker.index ? 'sel' : ''}" style="--c:${ITEM_DEFS[id].color}">${ITEM_DEFS[id].icon}</div>`).join('')}
-      </div>
-      <div class="item-picker-name"><b>${sel.label}</b> · T${sel.tier}<br><span>${sel.desc}</span></div>
-      <div class="item-picker-hint">◀ ▶ choose · ITEM button to use</div>
+      <div class="item-picker-title">${title}</div>
+      ${rows}
+      <div class="item-picker-hint">${hint}</div>
       <div class="item-picker-bar"><i></i></div>`;
     this._updatePickerBar(playerId);
   },
@@ -696,7 +875,7 @@ const ItemsSystem = {
   },
 
   /** Floating icon flying from source board to target board. */
-  _animateFire(sourceId, targetId, def, blocked) {
+  _animateFire(sourceId, targetId, def, blocked, noImpact) {
     const srcFrame = document.getElementById('frame' + sourceId);
     const tgtFrame = document.getElementById('frame' + targetId);
     if (!srcFrame || !tgtFrame) return;
@@ -713,11 +892,45 @@ const ItemsSystem = {
       orb.style.opacity = blocked ? '0.3' : '0';
     });
     setTimeout(() => orb.remove(), 520);
-    if (!blocked) {
+    if (!blocked && !noImpact) {
       tgtFrame.style.setProperty('--item-color', def.color);
       tgtFrame.classList.remove('item-impact'); void tgtFrame.offsetWidth; tgtFrame.classList.add('item-impact');
       setTimeout(() => tgtFrame.classList.remove('item-impact'), 450);
     }
+  },
+
+  _flashImpact(playerId, def) {
+    const frame = document.getElementById('frame' + playerId);
+    if (!frame) return;
+    frame.style.setProperty('--item-color', def.color);
+    frame.classList.remove('item-impact'); void frame.offsetWidth; frame.classList.add('item-impact');
+    setTimeout(() => frame.classList.remove('item-impact'), 450);
+  },
+
+  /** "ICON NAME INCOMING" strip at the bottom of the victim's board for the telegraph window. */
+  _showIncoming(playerId, def) {
+    const frame = document.getElementById('frame' + playerId);
+    if (!frame) return null;
+    let wrap = frame.querySelector('.item-incoming-wrap');
+    if (!wrap) { wrap = document.createElement('div'); wrap.className = 'item-incoming-wrap'; frame.appendChild(wrap); }
+    const el = document.createElement('div');
+    el.className = 'item-incoming';
+    el.style.setProperty('--c', def.color);
+    el.innerHTML = `${def.icon} <b>${def.label.toUpperCase()}</b> INCOMING`;
+    wrap.appendChild(el);
+    return el;
+  },
+
+  _pruneIncoming(playerId) {
+    const frame = document.getElementById('frame' + playerId);
+    const wrap = frame && frame.querySelector('.item-incoming-wrap');
+    if (wrap && !wrap.children.length) wrap.remove();
+  },
+
+  _clearIncoming(playerId) {
+    const frame = document.getElementById('frame' + playerId);
+    const wrap = frame && frame.querySelector('.item-incoming-wrap');
+    if (wrap) wrap.remove();
   },
 
   _burstIcon(playerId, def) {
@@ -802,12 +1015,14 @@ const ItemsSystem = {
       }
       .item-fog-overlay.show { opacity: 1; }
       .item-fog-overlay::before {
-        content: ''; position: absolute; inset: -35%;
-        background: repeating-linear-gradient(104deg, transparent 0 17px, rgba(220,250,255,0.12) 19px, transparent 25px 43px),
-          repeating-linear-gradient(8deg, transparent 0 26px, rgba(190,239,255,0.09) 28px, transparent 34px 56px);
-        mix-blend-mode: screen; opacity: .75; animation: itemWaterGlints 3.2s ease-in-out infinite alternate;
+        content: ''; position: absolute; inset: -45%;
+        background: repeating-radial-gradient(ellipse 115% 52% at 18% 25%, transparent 0 18px, rgba(220,250,255,0.2) 20px, transparent 24px 42px),
+          repeating-radial-gradient(ellipse 110% 48% at 82% 75%, transparent 0 22px, rgba(190,239,255,0.14) 24px, transparent 28px 50px),
+          linear-gradient(110deg, transparent 36%, rgba(220,250,255,0.08) 48%, transparent 61%);
+        filter: url(#itemWaterDistortion); mix-blend-mode: screen; opacity: .88;
+        animation: itemWaterWaves 2.4s ease-in-out infinite alternate;
       }
-      @keyframes itemWaterGlints { from{transform:translate(-3%,-2%) rotate(-7deg);background-position:0 0,0 0} to{transform:translate(3%,2%) rotate(-4deg);background-position:36px -22px,-28px 30px} }
+      @keyframes itemWaterWaves { from{transform:translate(-5%,-3%) rotate(-5deg) scale(1);background-position:0 0,0 0,0 0} to{transform:translate(5%,3%) rotate(4deg) scale(1.08);background-position:42px -28px,-34px 38px,26px 0} }
 
       .item-beam-orb {
         position: fixed; width: 34px; height: 34px; margin-left:-17px; margin-top:-17px;
@@ -832,12 +1047,15 @@ const ItemsSystem = {
       }
 
       .item-picker {
-        position: absolute; left: 6px; right: 6px; top: 6px; z-index: 7; pointer-events: none;
-        padding: 8px; border-radius: 10px; text-align: center; color: #fff;
-        background: rgba(10,9,16,0.88); border: 1px solid rgba(255,210,95,0.7);
-        box-shadow: 0 0 18px rgba(255,210,95,0.35); font-size: 11px;
+        position: absolute; left: 8px; right: 8px; top: 8px; bottom: 8px; z-index: 7; pointer-events: none;
+        display: flex; flex-direction: column; justify-content: center; overflow: auto;
+        padding: 14px 12px; border-radius: 10px; text-align: center; color: #fff;
+        background: rgba(10,9,16,0.94); border: 2px solid rgba(255,210,95,0.85);
+        box-shadow: 0 0 30px rgba(255,210,95,0.5); font-size: 15px;
+        backdrop-filter: blur(5px); animation: itemPickerZoom .22s cubic-bezier(.2,.8,.2,1) both;
       }
-      .item-picker-title { font-weight: 700; letter-spacing: 1px; color: rgb(255,210,95); margin-bottom: 6px; }
+      @keyframes itemPickerZoom { from{opacity:0;transform:scale(.82)} to{opacity:1;transform:scale(1)} }
+      .item-picker-title { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: rgb(255,210,95); margin-bottom: 10px; }
       .item-picker-grid { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
       .item-picker-opt {
         width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
@@ -849,6 +1067,25 @@ const ItemsSystem = {
       .item-picker-hint { margin-top: 4px; opacity: .5; font-size: 9px; }
       .item-picker-bar { margin-top: 6px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
       .item-picker-bar i { display: block; height: 100%; width: 100%; background: rgb(255,210,95); }
+      .item-picker-row {
+        display: flex; gap: 8px; align-items: center; text-align: left;
+        min-height: 48px; padding: 8px 10px; margin-top: 6px; border-radius: 8px; opacity: .72;
+        background: rgba(var(--c,255,210,95),0.08); border: 1px solid rgba(var(--c,255,210,95),0.25);
+      }
+      .item-picker-row.sel { opacity: 1; border: 2px solid rgb(var(--c,255,210,95)); box-shadow: 0 0 10px rgba(var(--c,255,210,95),0.7); }
+      .ip-icon { flex: 0 0 32px; font-size: 27px; line-height: 1; text-align: center; }
+      .ip-text { font-size: 14px; line-height: 1.3; }
+      .ip-text small { opacity: .78; font-size: 11px; line-height: 1.3; }
+      .item-picker-hint { margin-top: 9px; font-size: 12px; font-weight: 700; color: rgba(255,255,255,.82); }
+      .item-picker-bar { flex: 0 0 5px; margin-top: 9px; }
+
+      @keyframes itemIncoming { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+      .item-incoming-wrap { position: absolute; left: 6px; right: 6px; bottom: 8px; z-index: 7; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+      .item-incoming {
+        padding: 4px 8px; border-radius: 8px; text-align: center; font-size: 11px; color: #fff; letter-spacing: .5px;
+        background: rgba(var(--c,255,84,112),0.3); border: 1px solid rgba(var(--c,255,84,112),0.9);
+        animation: itemIncoming .3s ease-in-out infinite;
+      }
     `;
     const style = document.createElement('style');
     style.id = 'itemsSystemStyle';
@@ -859,11 +1096,13 @@ const ItemsSystem = {
     const filters = document.createElementNS(svgNS, 'svg');
     filters.setAttribute('aria-hidden', 'true');
     filters.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
-    filters.innerHTML = `<filter id="itemWaterDistortion" x="-8%" y="-8%" width="116%" height="116%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.028" numOctaves="2" seed="7" result="waterNoise">
-        <animate attributeName="baseFrequency" dur="3.4s" values="0.012 0.028;0.02 0.045;0.012 0.028" repeatCount="indefinite" />
+    filters.innerHTML = `<filter id="itemWaterDistortion" x="-12%" y="-12%" width="124%" height="124%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.018" numOctaves="2" seed="7" result="waterNoise">
+        <animate attributeName="baseFrequency" dur="2.8s" values="0.008 0.018;0.02 0.042;0.008 0.018" repeatCount="indefinite" />
       </feTurbulence>
-      <feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="7" xChannelSelector="R" yChannelSelector="G" />
+      <feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="16" xChannelSelector="R" yChannelSelector="G">
+        <animate attributeName="scale" dur="2.8s" values="12;22;12" repeatCount="indefinite" />
+      </feDisplacementMap>
     </filter>`;
     document.body.appendChild(filters);
   }

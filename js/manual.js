@@ -60,20 +60,22 @@ const ManualGuide = {
       .manual-control-group{padding:13px;border-top:2px solid #3a3747;background:rgba(255,255,255,.02)}
       .manual-control-group p{margin-top:4px;font-size:11px}
       .manual-note{margin-top:10px;padding:9px 12px;border:1px solid rgba(255,210,95,.22);background:rgba(255,210,95,.045)}
-      .manual-item-layout{display:grid;grid-template-columns:minmax(270px,320px) minmax(0,1fr);gap:18px;align-items:start}
-      .manual-item-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:6px}
-      .manual-item-btn{display:grid;grid-template-columns:24px minmax(0,1fr);gap:5px;align-items:center;text-align:left;min-height:44px;padding:5px 7px;border-color:#302d3c;background:#15141e}
+      .manual-item-layout{display:grid;grid-template-columns:minmax(250px,300px) minmax(0,1fr);gap:14px;align-items:start;min-width:0}
+      .manual-water-filter{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+      .manual-item-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:5px}
+      .manual-item-btn{display:grid;grid-template-columns:24px minmax(0,1fr);gap:5px;align-items:center;text-align:left;min-height:42px;padding:4px 6px;border-color:#302d3c;background:#15141e}
       .manual-item-btn.selected{border-color:rgba(62,230,217,.65);box-shadow:inset 3px 0 #3ee6d9;color:#eae7f2}
       .manual-item-icon{font-size:20px;text-align:center}
       .manual-item-name{font:700 13px var(--font-display,'Arial Narrow',sans-serif)}
       .manual-item-kind{display:block;margin-top:2px;color:#8b87a0;font:9px var(--font-mono,Consolas,monospace);text-transform:uppercase}
       .manual-item-detail{min-width:0;padding:2px 0}
+      .manual-item-side{display:flex;flex-direction:column;gap:8px;min-width:0}
       .manual-item-detail-head{display:flex;gap:12px;align-items:center;margin-bottom:5px}
       .manual-item-detail-icon{font-size:36px}
       .manual-item-detail h2{margin:0}
       .manual-item-detail p{margin:8px 0}
       .manual-item-use-note{margin:6px 0 0;color:#8b87a0!important;font-size:11px!important}
-      .manual-duel{width:100%;margin:9px auto 0;padding:8px 18px;border:1px solid #302d3c;border-radius:6px;background:linear-gradient(130deg,rgba(62,230,217,.045),rgba(255,84,112,.045))}
+      .manual-duel{width:100%;min-width:0;margin:0;padding:7px 10px;border:1px solid #302d3c;border-radius:6px;background:linear-gradient(130deg,rgba(62,230,217,.045),rgba(255,84,112,.045))}
       .manual-duel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px}
       .manual-duel-head h3{margin:0}
       .manual-duel-stage{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:clamp(60px,10vw,150px);width:min(100%,900px);margin:0 auto}
@@ -117,7 +119,7 @@ const ManualGuide = {
       .manual-duel-stage[data-item="GARBAGE_MEGA"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{box-shadow:0 0 24px rgba(255,60,90,.55)}
       .manual-duel-stage[data-item="GARBAGE_MEGA"][data-phase="result"] .manual-duel-cell.garbage{animation:manualGarbageRise .45s ease-out both}
       .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{filter:url(#manualWaterDistortion) blur(1px) saturate(1.25);animation:manualFogShake .32s linear infinite}
-      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board::after{content:"";position:absolute;z-index:3;inset:-20%;pointer-events:none;background:repeating-linear-gradient(104deg,transparent 0 17px,rgba(220,250,255,.15) 19px,transparent 25px 43px),repeating-linear-gradient(8deg,transparent 0 26px,rgba(190,239,255,.12) 28px,transparent 34px 56px);mix-blend-mode:screen;animation:manualWaterGlints 2s ease-in-out infinite alternate}
+      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board::after{content:"";position:absolute;z-index:3;inset:-35%;pointer-events:none;background:repeating-radial-gradient(ellipse 115% 52% at 18% 25%,transparent 0 18px,rgba(220,250,255,.2) 20px,transparent 24px 42px),repeating-radial-gradient(ellipse 110% 48% at 82% 75%,transparent 0 22px,rgba(190,239,255,.15) 24px,transparent 28px 50px),linear-gradient(110deg,transparent 36%,rgba(220,250,255,.08) 48%,transparent 61%);filter:url(#manualWaterDistortion);mix-blend-mode:screen;animation:manualWaterWaves 2.4s ease-in-out infinite alternate}
       .manual-duel-stage[data-item="HEAVY"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{animation:manualHeavy .2s ease-in-out 4 alternate}
       .manual-duel-stage[data-item="SLOWMO"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-board{animation:manualSlow 1.1s ease-in-out 2}
       .manual-duel-stage[data-item="CLEAR_COLUMN"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board .manual-duel-cell:nth-child(10n+1){opacity:.15}
@@ -149,7 +151,7 @@ const ManualGuide = {
       @keyframes manualHeavy{to{transform:translateY(4px)}}
       @keyframes manualSlow{50%{filter:saturate(.25);opacity:.6}}
       @keyframes manualFogShake{0%,100%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(1px,-1px)}75%{transform:translate(-1px,-1px)}}
-      @keyframes manualWaterGlints{from{transform:translate(-3%,-2%) rotate(-7deg);background-position:0 0,0 0}to{transform:translate(3%,2%) rotate(-4deg);background-position:36px -22px,-28px 30px}}
+      @keyframes manualWaterWaves{from{transform:translate(-5%,-3%) rotate(-5deg) scale(1);background-position:0 0,0 0,0 0}to{transform:translate(5%,3%) rotate(4deg) scale(1.08);background-position:42px -28px,-34px 38px,26px 0}}
       @keyframes manualFourClear{0%,35%{background:#fff;box-shadow:0 0 14px #ffd25f;transform:scale(1)}100%{background:rgba(62,230,217,.08);box-shadow:none;transform:scale(.7);opacity:.2}}
       @keyframes manualBlastSample{0%{opacity:1;scale:.15}100%{opacity:0;scale:1.6}}
       @keyframes manualBlastHit{0%{background:#fff;box-shadow:0 0 10px #ff7828}100%{background:transparent;box-shadow:none;opacity:.1}}
@@ -167,9 +169,9 @@ const ManualGuide = {
       .manual-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 20px;border-top:1px solid #2a2836;color:#777386;font:9px var(--font-mono,Consolas,monospace)}
       .manual-close{padding:7px 15px}
       .manual-overlay .nav-focus{outline:2px solid #3ee6d9;outline-offset:2px}
-      @media(min-width:701px) and (max-height:900px){.manual-head{padding:12px 22px 9px}.manual-nav{padding:7px 22px}.manual-content{padding:10px 18px}.manual-content p,.manual-content li{line-height:1.45}.manual-hero{margin-bottom:6px}.manual-item-layout{grid-template-columns:minmax(270px,300px) minmax(0,1fr);gap:14px}.manual-duel{margin-top:1px;padding:6px 14px}.manual-duel-board{width:min(100%,185px)}.manual-duel-name{margin-bottom:4px}.manual-duel-caption{min-height:22px;margin:4px auto 0}.manual-duel-controls{margin-top:2px}.manual-note{margin-top:7px;padding:7px 10px}}
-      @media(min-width:701px) and (max-height:780px){.manual-head{padding:9px 18px 7px}.manual-nav{padding:5px 18px}.manual-content{padding:7px 14px}.manual-item-layout{grid-template-columns:minmax(250px,280px) minmax(0,1fr);gap:12px}.manual-item-btn{min-height:40px;padding:4px 6px}.manual-duel{margin-top:6px;padding:6px 12px}.manual-duel-board{width:min(100%,150px)}.manual-duel-head{margin-bottom:4px}.manual-duel-caption{min-height:20px;margin:3px auto 0}.manual-duel-controls{margin-top:2px}}
-      @media(max-width:700px){.manual-overlay{padding:8px}.manual-window{width:100%;height:100%;border-radius:7px}.manual-head{padding:12px 14px}.manual-title{font-size:22px}.manual-nav{padding:8px 12px}.manual-tab{flex:1;min-width:0;padding:8px 5px}.manual-content{padding:14px}.manual-hero,.manual-item-layout,.manual-practice-layout{grid-template-columns:1fr}.manual-grid,.manual-controls{grid-template-columns:1fr 1fr}.manual-stat{min-height:80px}.manual-item-list{display:grid;grid-template-columns:1fr 1fr}.manual-item-btn{grid-template-columns:24px 1fr;padding:7px 5px}.manual-item-name{font-size:11px}.manual-item-kind{font-size:8px}.manual-item-detail{min-height:0}.manual-practice-board{width:min(100%,240px);margin:auto}.manual-footer{padding:8px 12px}}
+      @media(min-width:701px) and (max-height:900px){.manual-head{padding:12px 22px 9px}.manual-nav{padding:7px 22px}.manual-content{padding:10px 18px}.manual-content p,.manual-content li{line-height:1.45}.manual-hero{margin-bottom:6px}.manual-item-layout{grid-template-columns:minmax(250px,280px) minmax(0,1fr);gap:12px}.manual-item-detail p{margin:5px 0}.manual-duel{padding:6px 10px}.manual-duel-board{width:min(100%,175px)}.manual-duel-name{margin-bottom:4px}.manual-duel-caption{min-height:22px;margin:4px auto 0}.manual-duel-controls{margin-top:2px}.manual-note{margin-top:7px;padding:7px 10px}}
+      @media(min-width:701px) and (max-height:780px){.manual-head{padding:9px 18px 7px}.manual-nav{padding:5px 18px}.manual-content{padding:7px 14px}.manual-item-layout{grid-template-columns:minmax(235px,255px) minmax(0,1fr);gap:10px}.manual-item-btn{min-height:38px;padding:3px 5px}.manual-item-kind{font-size:8px}.manual-duel{padding:5px 8px}.manual-duel-board{width:min(100%,140px)}.manual-duel-head{margin-bottom:4px}.manual-duel-caption{min-height:20px;margin:3px auto 0}.manual-duel-controls{margin-top:2px}}
+      @media(max-width:700px){.manual-overlay{padding:8px}.manual-window{width:100%;height:100%;border-radius:7px}.manual-head{padding:12px 14px}.manual-title{font-size:22px}.manual-nav{padding:8px 12px}.manual-tab{flex:1;min-width:0;padding:8px 5px}.manual-content{padding:14px}.manual-hero,.manual-item-layout,.manual-practice-layout{grid-template-columns:1fr}.manual-grid,.manual-controls{grid-template-columns:1fr 1fr}.manual-stat{min-height:80px}.manual-item-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.manual-item-btn{grid-template-columns:22px minmax(0,1fr);min-height:40px;padding:6px 5px}.manual-item-name{font-size:11px}.manual-item-kind{font-size:8px}.manual-item-detail{min-height:0}.manual-item-side{gap:10px}.manual-duel{padding:8px}.manual-practice-board{width:min(100%,240px);margin:auto}.manual-footer{padding:8px 12px}}
       @media(max-width:700px){.manual-duel{padding:10px}.manual-duel-head{align-items:flex-start;flex-direction:column;gap:4px}.manual-duel-stage{gap:24px}.manual-duel-board{width:min(100%,160px);gap:2px;padding:4px}.manual-duel-name{font-size:9px}.manual-duel-role{font-size:8px}.manual-duel-status{font-size:8px}.manual-duel-shield{font-size:7px;padding:2px 3px}.manual-duel-projectile{width:21px;height:21px;font-size:11px}}
       @media(max-height:560px){.manual-head{padding:8px 14px}.manual-nav{padding:5px 12px}.manual-content{padding:8px 12px}.manual-window{height:100%}.manual-title{font-size:21px}.manual-grid{gap:6px}.manual-card{min-height:90px;padding:9px}}
     `;
@@ -271,7 +273,7 @@ const ManualGuide = {
       <section class="manual-controls">
         <article class="manual-control-group"><h3>Keyboard / WASD</h3><p><strong>A / D</strong> move<br><strong>S</strong> soft drop, <strong>W</strong> hard drop<br><strong>Q / E</strong> rotate<br><strong>Left Shift</strong> hold piece<br><strong>C</strong> use item</p></article>
         <article class="manual-control-group"><h3>Keyboard / Arrows</h3><p><strong>Left / Right</strong> move<br><strong>Down</strong> soft drop, <strong>Up</strong> hard drop<br><strong>, / .</strong> rotate<br><strong>Right Shift</strong> hold piece<br><strong>/</strong> use item</p></article>
-        <article class="manual-control-group"><h3>Gamepad</h3><p><strong>D-pad / stick</strong> move<br><strong>Face buttons</strong> rotate<br><strong>D-pad up</strong> hard drop<br><strong>LB / RB / triggers</strong> hold<br><strong>Y</strong> use item</p></article>
+        <article class="manual-control-group"><h3>Gamepad</h3><p><strong>D-pad / stick</strong> move<br><strong>Face buttons</strong> rotate<br><strong>D-pad up</strong> hard drop<br><strong>LB / RB / triggers</strong> hold<br><strong>Y</strong> use item; in picker, <strong>D-pad up/down</strong> choose and A / HOLD confirms</p></article>
       </section>
       <div class="manual-note"><p><strong>Match pace:</strong> everyone shares the same gravity speed. The level rises from the highest line count in the match; the default is one level per 10 lines. Open the <strong>Practice</strong> tab to move, rotate, and drop sample pieces without affecting a match.</p></div>`;
   },
@@ -283,9 +285,11 @@ const ManualGuide = {
     const defs = typeof ITEM_DEFS === 'undefined' ? {} : ITEM_DEFS;
     const entries = Object.values(defs);
     const selected = defs[this.selectedItem] || entries[0];
-    const itemChance = typeof ItemsSystem !== 'undefined' ? Math.round(ItemsSystem.ACQUIRE_CHANCE * 100) : 75;
+    const dropScale = typeof ItemsSystem !== 'undefined' ? ItemsSystem.ACQUIRE_CHANCE : 1;
+    const dropRates = [1, 2, 3].map(rows => Math.round(ITEM_CONFIG.ACQUIRE_CHANCE_BY_ROWS[rows] * dropScale * 100));
     const itemLines = typeof ItemsSystem !== 'undefined' ? ItemsSystem.LINES_TO_QUALIFY : 1;
     const invincibilitySeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10;
+    const pickerSeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.PICKER_MS / 1000 : 10;
     const list = entries.map((item) => `
       <button class="btn manual-item-btn ${item.id === (selected && selected.id) ? 'selected' : ''}" data-item="${item.id}" style="--item-rgb:${item.color}">
         <span class="manual-item-icon">${item.icon}</span><span><span class="manual-item-name">${item.label}</span><span class="manual-item-kind">TIER ${item.tier} · ${item.kind === 'self' ? 'Self effect' : 'Targets the leader'}</span></span>
@@ -295,10 +299,9 @@ const ManualGuide = {
       <p>${selected.desc}</p>
     ` : '<h2>Power-ups unavailable</h2><p>Item definitions could not be loaded.</p>';
     content.innerHTML = `
-      <svg class="manual-water-filter" aria-hidden="true"><filter id="manualWaterDistortion" x="-8%" y="-8%" width="116%" height="116%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.028" numOctaves="2" seed="7" result="waterNoise"><animate attributeName="baseFrequency" dur="3.4s" values="0.012 0.028;0.02 0.045;0.012 0.028" repeatCount="indefinite" /></feTurbulence><feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="7" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
-      <div class="manual-hero manual-item-intro"><div class="manual-callout"><h2>Earn a boost. Spend it wisely.</h2><p>Items are optional and off by default. Settings sets the minimum clear for random drops (currently ${itemLines} row${itemLines === 1 ? '' : 's'}); larger clears unlock stronger tiers. A four-row clear always opens a power-up picker and grants ${invincibilitySeconds}s of invincibility. Offensive items target the leader.</p></div><div class="manual-stat"><b>${itemChance}%</b><span>Chance on qualifying 1–3 row clears. Four-row clears always trigger the bonus. Only one item can be held at once.</span></div></div>
-      <div class="manual-item-layout"><nav class="manual-item-list" aria-label="Power-up list">${list}</nav><section class="manual-item-detail">${itemContent}</section></div>
-      ${selected ? this._duelSampleMarkup(selected) : ''}`;
+      <svg class="manual-water-filter" aria-hidden="true"><filter id="manualWaterDistortion" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.008 0.018" numOctaves="2" seed="7" result="waterNoise"><animate attributeName="baseFrequency" dur="2.8s" values="0.008 0.018;0.02 0.042;0.008 0.018" repeatCount="indefinite" /></feTurbulence><feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="16" xChannelSelector="R" yChannelSelector="G"><animate attributeName="scale" dur="2.8s" values="12;22;12" repeatCount="indefinite" /></feDisplacementMap></filter></svg>
+      <div class="manual-hero manual-item-intro"><div class="manual-callout"><h2>Earn a boost. Spend it wisely.</h2><p>Items are optional and off by default. Settings sets the minimum clear for random drops (currently ${itemLines} row${itemLines === 1 ? '' : 's'}); larger clears unlock stronger tiers. A four-row clear pauses gravity for ${pickerSeconds}s while choosing and grants ${invincibilitySeconds}s of invincibility. In the picker, D-pad up/down selects; A or HOLD confirms.</p></div><div class="manual-stat"><b>${dropRates[0]} / ${dropRates[1]} / ${dropRates[2]}%</b><span>Drop chance after 1 / 2 / 3 rows. The Settings chance slider scales these rates. Four-row clears always trigger the bonus.</span></div></div>
+      <div class="manual-item-layout"><nav class="manual-item-list" aria-label="Power-up list">${list}</nav><div class="manual-item-side"><section class="manual-item-detail">${itemContent}</section>${selected ? this._duelSampleMarkup(selected) : ''}</div></div>`;
     if (selected) this._scheduleDuelDemo();
   },
 
@@ -312,6 +315,7 @@ const ManualGuide = {
 
   _duelSampleMarkup(item) {
     const invincibilitySeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10;
+    const pickerSeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.PICKER_MS / 1000 : 10;
     const board = (player) => {
       const cells = Array.from({ length: 140 }, (_, index) => {
         const row = Math.floor(index / 10), col = index % 10;
@@ -325,7 +329,7 @@ const ManualGuide = {
         : '';
       const role = player === 1 ? (item.id === 'SHIELD' ? 'Shield holder' : 'Uses item') : (item.kind === 'offense' ? 'Leader / target' : 'Other player');
       const shield = item.id === 'SHIELD' && player === 1 ? '<span class="manual-duel-shield">SHIELD READY</span>' : '';
-      const bonusPicker = player === 1 ? `<span class="manual-tetris-invincible">INVINCIBLE · ${invincibilitySeconds}s</span><div class="manual-tetris-picker">FOUR-LINE BONUS · PICK ANY POWER-UP<div class="manual-tetris-picker-icons">${Object.values(ITEM_DEFS).map(def => `<span class="${def.id === 'BLAST' ? 'selected' : ''}">${def.icon}</span>`).join('')}</div><span>ITEM uses the highlighted choice</span></div>` : '';
+      const bonusPicker = player === 1 ? `<span class="manual-tetris-invincible">INVINCIBLE · ${invincibilitySeconds}s</span><div class="manual-tetris-picker">GRAVITY PAUSED · ${pickerSeconds}s TO PICK<div class="manual-tetris-picker-icons">${Object.values(ITEM_DEFS).map(def => `<span class="${def.id === 'BLAST' ? 'selected' : ''}">${def.icon}</span>`).join('')}</div><span>↑ / ↓ choose · A / HOLD confirms · protected ${invincibilitySeconds}s</span></div>` : '';
       const status = item.id === 'SHIELD' && player === 1 ? 'Incoming hit will be blocked' : 'Stack shown before item use';
       return `<div class="manual-duel-player" data-player="${player}"><div class="manual-duel-name"><span>PLAYER ${player}</span><span class="manual-duel-role">${role}</span></div><div class="manual-duel-board">${cells}${shield}${fallingPiece}${bonusPicker}</div><div class="manual-duel-status">${status}</div></div>`;
     };
@@ -527,6 +531,7 @@ const ManualGuide = {
 
   _tryTetrisBonus() {
     const invincibilitySeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10;
+    const pickerSeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.PICKER_MS / 1000 : 10;
     const stage = this.overlay.querySelector('#manualDuelStage');
     const caption = this.overlay.querySelector('#manualDuelCaption');
     if (!stage || !caption || typeof ITEM_DEFS === 'undefined') return;
@@ -554,9 +559,9 @@ const ManualGuide = {
         if (index >= 100) cell.className = 'manual-duel-cell';
       });
       stage.dataset.phase = 'picker';
-      p1Status.textContent = `Invincible · ${invincibilitySeconds}s to choose`;
+      p1Status.textContent = `Gravity paused · ${pickerSeconds}s; invincible · ${invincibilitySeconds}s`;
       p2Status.textContent = 'Protected target selection';
-      caption.textContent = `Player 1 is protected for ${invincibilitySeconds} seconds. The highlighted power-up is used immediately when selected.`;
+      caption.textContent = `Player 1’s gravity is paused for ${pickerSeconds} seconds to choose; invincibility lasts ${invincibilitySeconds} seconds. The selected power-up is used immediately.`;
       this.demoTimers.push(setTimeout(() => {
         stage.classList.remove('is-playing');
         void stage.offsetWidth;
@@ -576,7 +581,7 @@ const ManualGuide = {
           });
           p1Status.textContent = `Invincible · ${invincibilitySeconds}s`;
           p2Status.textContent = 'Blast hit';
-          caption.textContent = `Four cleared rows grant a guaranteed pick and ${invincibilitySeconds} seconds of invincibility; the selected power-up is used immediately.`;
+          caption.textContent = `Four cleared rows pause gravity for ${pickerSeconds} seconds to choose and grant ${invincibilitySeconds} seconds of invincibility; the selected power-up is used immediately.`;
         }, 900));
       }, 1200));
     }, 650));

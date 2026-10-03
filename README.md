@@ -50,7 +50,7 @@ The game emphasizes:
 
 - Full start menu, lobby screen, pause flow, settings menu, and results screen
 - Controller-first focus navigation for interactive elements
-- Settings sliders for volume, match speed, item drop odds, and the line-clear threshold for power-ups; a four-line clear grants 10 seconds of invincibility and a free power-up pick
+- Settings sliders for volume, match speed, item drop odds, and the line-clear threshold for power-ups; a four-line clear pauses gravity for 5 seconds to pick a power-up and grants 5 seconds of invincibility
 - Controls reference screen with mapping information
 
 ## Project structure

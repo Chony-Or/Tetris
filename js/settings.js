@@ -45,11 +45,11 @@ const SettingsMenu = {
         </div>
         <div class="settings-row">
           <span class="settings-label">Item Drop Chance</span>
-          <input type="range" min="0" max="100" step="1" value="75" id="stItemDropChance" class="settings-slider">
-          <span class="settings-val" id="stVal_itemDropChance">75%</span>
+          <input type="range" min="0" max="100" step="1" value="100" id="stItemDropChance" class="settings-slider">
+          <span class="settings-val" id="stVal_itemDropChance">100%</span>
         </div>
         <div class="settings-hint" style="opacity:0.55;font-size:12px;margin:-6px 0 10px;">
-          Chance to receive an item after a qualifying clear when you're not already holding one. Applies immediately.
+          Scales the per-clear drop chance (defaults: 45% for 1 row, 70% for 2, 90% for 3 - edit ITEM_CONFIG in items.js). 100% = defaults, 0% = no drops. Applies immediately.
         </div>
         <div class="settings-row">
           <span class="settings-label">Min Rows for Power-Up</span>
@@ -57,7 +57,7 @@ const SettingsMenu = {
           <span class="settings-val" id="stVal_itemLines">1</span>
         </div>
         <div class="settings-hint" style="opacity:0.55;font-size:12px;margin:-6px 0 10px;">
-          Smallest clear that can roll for a power-up. Larger clears unlock stronger tiers; 4 rows always grants ${typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10}s invincibility + a free pick. Applies immediately.
+          Smallest clear that can roll for a power-up. Larger clears unlock stronger tiers; 4 rows pauses gravity for ${typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.PICKER_MS / 1000 : 5}s to pick, with ${typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 5}s invincibility. A T-spin counts as +1 row. Applies immediately.
         </div>
         <div class="settings-btns">
           <button class="btn" id="stResetBtn">Reset to Default</button>
@@ -109,7 +109,7 @@ const SettingsMenu = {
     document.getElementById('stResetBtn').addEventListener('click', () => {
       AudioManager.resetToDefaults();
       MatchManager.setLinesPerLevel(10);
-      ItemsSystem.setAcquireChance(75);
+      ItemsSystem.setAcquireChance(100);
       ItemsSystem.setLinesToQualify(1);
       this._syncControls();
       AudioManager.buttonClick();
@@ -195,7 +195,7 @@ const ControlsMenu = {
           <div class="controls-card-title">Gamepad</div>
           <div>D-Pad / Stick — Move &nbsp; Face Buttons — Rotate</div>
           <div>LB/LT/RB/RT — Hold &nbsp; D-Pad Up or Stick Up — Hard Drop &nbsp; Start — Pause</div>
-          <div>Y — Use Item <span style="opacity:0.6;">(Items mode only; during the 4-row pick, D-Pad L/R chooses, Y uses)</span></div>
+          <div>Y — Use Item <span style="opacity:0.6;">(Items mode only; during the 4-row pick, D-Pad Up/Down chooses, A or Hold confirms)</span></div>
         </div>
       </div>
       <button class="btn primary" id="ctlCloseBtn">Done</button>`;
