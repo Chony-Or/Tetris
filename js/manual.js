@@ -61,7 +61,6 @@ const ManualGuide = {
       .manual-control-group p{margin-top:4px;font-size:11px}
       .manual-note{margin-top:10px;padding:9px 12px;border:1px solid rgba(255,210,95,.22);background:rgba(255,210,95,.045)}
       .manual-item-layout{display:grid;grid-template-columns:minmax(250px,300px) minmax(0,1fr);gap:14px;align-items:start;min-width:0}
-      .manual-water-filter{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
       .manual-item-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:5px}
       .manual-item-btn{display:grid;grid-template-columns:24px minmax(0,1fr);gap:5px;align-items:center;text-align:left;min-height:42px;padding:4px 6px;border-color:#302d3c;background:#15141e}
       .manual-item-btn.selected{border-color:rgba(62,230,217,.65);box-shadow:inset 3px 0 #3ee6d9;color:#eae7f2}
@@ -118,8 +117,9 @@ const ManualGuide = {
       .manual-duel-stage[data-item="GARBAGE_PLUS"][data-phase="result"] .manual-duel-cell.garbage:nth-child(6n){animation-delay:.12s}
       .manual-duel-stage[data-item="GARBAGE_MEGA"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{box-shadow:0 0 24px rgba(255,60,90,.55)}
       .manual-duel-stage[data-item="GARBAGE_MEGA"][data-phase="result"] .manual-duel-cell.garbage{animation:manualGarbageRise .45s ease-out both}
-      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{filter:url(#manualWaterDistortion) blur(1px) saturate(1.25);animation:manualFogShake .32s linear infinite}
-      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board::after{content:"";position:absolute;z-index:3;inset:-35%;pointer-events:none;background:repeating-radial-gradient(ellipse 115% 52% at 18% 25%,transparent 0 18px,rgba(220,250,255,.2) 20px,transparent 24px 42px),repeating-radial-gradient(ellipse 110% 48% at 82% 75%,transparent 0 22px,rgba(190,239,255,.15) 24px,transparent 28px 50px),linear-gradient(110deg,transparent 36%,rgba(220,250,255,.08) 48%,transparent 61%);filter:url(#manualWaterDistortion);mix-blend-mode:screen;animation:manualWaterWaves 2.4s ease-in-out infinite alternate}
+      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{animation:manualFogShake .32s linear infinite}
+      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board::after{content:"";position:absolute;z-index:3;inset:-30%;pointer-events:none;background:repeating-radial-gradient(ellipse 115% 52% at 18% 25%,transparent 0 18px,rgba(220,250,255,.2) 20px,transparent 24px 42px),repeating-radial-gradient(ellipse 110% 48% at 82% 75%,transparent 0 22px,rgba(190,239,255,.14) 24px,transparent 28px 50px);opacity:.84;will-change:transform;animation:manualWaterWaves 3.2s ease-in-out infinite alternate}
+      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board::before{content:"";position:absolute;z-index:3;inset:-20%;pointer-events:none;background:linear-gradient(110deg,transparent 40%,rgba(220,250,255,.12) 50%,transparent 60%);opacity:.7;will-change:transform;animation:manualWaterSheen 4.4s ease-in-out infinite}
       .manual-duel-stage[data-item="HEAVY"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{animation:manualHeavy .2s ease-in-out 4 alternate}
       .manual-duel-stage[data-item="SLOWMO"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-board{animation:manualSlow 1.1s ease-in-out 2}
       .manual-duel-stage[data-item="CLEAR_COLUMN"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board .manual-duel-cell:nth-child(10n+1){opacity:.15}
@@ -151,7 +151,8 @@ const ManualGuide = {
       @keyframes manualHeavy{to{transform:translateY(4px)}}
       @keyframes manualSlow{50%{filter:saturate(.25);opacity:.6}}
       @keyframes manualFogShake{0%,100%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(1px,-1px)}75%{transform:translate(-1px,-1px)}}
-      @keyframes manualWaterWaves{from{transform:translate(-5%,-3%) rotate(-5deg) scale(1);background-position:0 0,0 0,0 0}to{transform:translate(5%,3%) rotate(4deg) scale(1.08);background-position:42px -28px,-34px 38px,26px 0}}
+      @keyframes manualWaterWaves{from{transform:translate3d(-3%,-2%,0)}to{transform:translate3d(3%,2%,0)}}
+      @keyframes manualWaterSheen{0%,100%{transform:translate3d(-18%,0,0)}50%{transform:translate3d(18%,0,0)}}
       @keyframes manualFourClear{0%,35%{background:#fff;box-shadow:0 0 14px #ffd25f;transform:scale(1)}100%{background:rgba(62,230,217,.08);box-shadow:none;transform:scale(.7);opacity:.2}}
       @keyframes manualBlastSample{0%{opacity:1;scale:.15}100%{opacity:0;scale:1.6}}
       @keyframes manualBlastHit{0%{background:#fff;box-shadow:0 0 10px #ff7828}100%{background:transparent;box-shadow:none;opacity:.1}}
@@ -299,7 +300,6 @@ const ManualGuide = {
       <p>${selected.desc}</p>
     ` : '<h2>Power-ups unavailable</h2><p>Item definitions could not be loaded.</p>';
     content.innerHTML = `
-      <svg class="manual-water-filter" aria-hidden="true"><filter id="manualWaterDistortion" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.008 0.018" numOctaves="2" seed="7" result="waterNoise"><animate attributeName="baseFrequency" dur="2.8s" values="0.008 0.018;0.02 0.042;0.008 0.018" repeatCount="indefinite" /></feTurbulence><feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="16" xChannelSelector="R" yChannelSelector="G"><animate attributeName="scale" dur="2.8s" values="12;22;12" repeatCount="indefinite" /></feDisplacementMap></filter></svg>
       <div class="manual-hero manual-item-intro"><div class="manual-callout"><h2>Earn a boost. Spend it wisely.</h2><p>Items are optional and off by default. Settings sets the minimum clear for random drops (currently ${itemLines} row${itemLines === 1 ? '' : 's'}); larger clears unlock stronger tiers. A four-row clear pauses gravity for ${pickerSeconds}s while choosing and grants ${invincibilitySeconds}s of invincibility. In the picker, D-pad up/down selects; A or HOLD confirms.</p></div><div class="manual-stat"><b>${dropRates[0]} / ${dropRates[1]} / ${dropRates[2]}%</b><span>Drop chance after 1 / 2 / 3 rows. The Settings chance slider scales these rates. Four-row clears always trigger the bonus.</span></div></div>
       <div class="manual-item-layout"><nav class="manual-item-list" aria-label="Power-up list">${list}</nav><div class="manual-item-side"><section class="manual-item-detail">${itemContent}</section>${selected ? this._duelSampleMarkup(selected) : ''}</div></div>`;
     if (selected) this._scheduleDuelDemo();

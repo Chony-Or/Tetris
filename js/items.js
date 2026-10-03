@@ -855,17 +855,14 @@ const ItemsSystem = {
     const st = this.state[playerId];
     const frame = document.getElementById('frame' + playerId);
     if (!frame) return;
-    const canvas = document.getElementById('boardCanvas' + playerId);
     let overlay = frame.querySelector('.item-fog-overlay');
     if (on) {
       frame.classList.add('item-fog-shake');
-      if (canvas) canvas.classList.add('item-water-distorted');
       if (!overlay) { overlay = document.createElement('div'); overlay.className = 'item-fog-overlay'; frame.appendChild(overlay); }
       requestAnimationFrame(() => overlay.classList.add('show'));
       if (st) st._fogShown = true;
     } else {
       frame.classList.remove('item-fog-shake');
-      if (canvas) canvas.classList.remove('item-water-distorted');
       if (overlay) {
         overlay.classList.remove('show');
         setTimeout(() => { if (!st || !st._fogShown) overlay.remove(); }, 500);
@@ -1006,23 +1003,28 @@ const ItemsSystem = {
 
       @keyframes itemFogShake { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-1px,1px)} 50%{transform:translate(1px,-1px)} 75%{transform:translate(-1px,-1px)} }
       .board-frame.item-fog-shake { animation: itemFogShake .32s linear infinite; }
-      .item-water-distorted { filter: url(#itemWaterDistortion) saturate(1.3); }
       .item-fog-overlay {
         position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
         overflow: hidden;
-        background: radial-gradient(ellipse at 35% 28%, rgba(213,249,255,0.04), rgba(94,171,190,0.18) 55%, rgba(190,190,205,0.3));
-        backdrop-filter: blur(1px) saturate(1.25); opacity: 0; transition: opacity .45s ease; z-index: 5;
+        background: linear-gradient(180deg, rgba(94,171,190,0.08), rgba(190,210,220,0.2));
+        opacity: 0; transition: opacity .35s ease; z-index: 5;
       }
       .item-fog-overlay.show { opacity: 1; }
       .item-fog-overlay::before {
-        content: ''; position: absolute; inset: -45%;
+        content: ''; position: absolute; inset: -30%; pointer-events: none;
         background: repeating-radial-gradient(ellipse 115% 52% at 18% 25%, transparent 0 18px, rgba(220,250,255,0.2) 20px, transparent 24px 42px),
-          repeating-radial-gradient(ellipse 110% 48% at 82% 75%, transparent 0 22px, rgba(190,239,255,0.14) 24px, transparent 28px 50px),
-          linear-gradient(110deg, transparent 36%, rgba(220,250,255,0.08) 48%, transparent 61%);
-        filter: url(#itemWaterDistortion); mix-blend-mode: screen; opacity: .88;
-        animation: itemWaterWaves 2.4s ease-in-out infinite alternate;
+          repeating-radial-gradient(ellipse 110% 48% at 82% 75%, transparent 0 22px, rgba(190,239,255,0.14) 24px, transparent 28px 50px);
+        opacity: .84; will-change: transform;
+        animation: itemWaterWaves 3.2s ease-in-out infinite alternate;
       }
-      @keyframes itemWaterWaves { from{transform:translate(-5%,-3%) rotate(-5deg) scale(1);background-position:0 0,0 0,0 0} to{transform:translate(5%,3%) rotate(4deg) scale(1.08);background-position:42px -28px,-34px 38px,26px 0} }
+      .item-fog-overlay::after {
+        content: ''; position: absolute; inset: -20%; pointer-events: none;
+        background: linear-gradient(110deg, transparent 40%, rgba(220,250,255,0.12) 50%, transparent 60%);
+        opacity: .7; will-change: transform;
+        animation: itemWaterSheen 4.4s ease-in-out infinite;
+      }
+      @keyframes itemWaterWaves { from{transform:translate3d(-3%,-2%,0)} to{transform:translate3d(3%,2%,0)} }
+      @keyframes itemWaterSheen { 0%,100%{transform:translate3d(-18%,0,0)} 50%{transform:translate3d(18%,0,0)} }
 
       .item-beam-orb {
         position: fixed; width: 34px; height: 34px; margin-left:-17px; margin-top:-17px;
@@ -1091,19 +1093,5 @@ const ItemsSystem = {
     style.id = 'itemsSystemStyle';
     style.textContent = css;
     document.head.appendChild(style);
-
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const filters = document.createElementNS(svgNS, 'svg');
-    filters.setAttribute('aria-hidden', 'true');
-    filters.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
-    filters.innerHTML = `<filter id="itemWaterDistortion" x="-12%" y="-12%" width="124%" height="124%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.018" numOctaves="2" seed="7" result="waterNoise">
-        <animate attributeName="baseFrequency" dur="2.8s" values="0.008 0.018;0.02 0.042;0.008 0.018" repeatCount="indefinite" />
-      </feTurbulence>
-      <feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="16" xChannelSelector="R" yChannelSelector="G">
-        <animate attributeName="scale" dur="2.8s" values="12;22;12" repeatCount="indefinite" />
-      </feDisplacementMap>
-    </filter>`;
-    document.body.appendChild(filters);
   }
 };
