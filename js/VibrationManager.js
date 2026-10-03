@@ -48,7 +48,8 @@ const RUMBLE_PROFILES = {
   ITEM_PICKUP: { duration: 90, weakMagnitude: 0.35, strongMagnitude: 0.2 },
   ITEM_USE: { duration: 80, weakMagnitude: 0.3, strongMagnitude: 0.3 },
   ITEM_RECEIVED: { duration: 220, weakMagnitude: 0.6, strongMagnitude: 0.7 },
-  ITEM_BLOCKED: { duration: 100, weakMagnitude: 0.25, strongMagnitude: 0.1 }
+  ITEM_BLOCKED: { duration: 100, weakMagnitude: 0.25, strongMagnitude: 0.1 },
+  FOG: { weakMagnitude: 0.18, strongMagnitude: 0.12 }
 };
 
 // Minimum ms between two vibration calls on the *same* pad, to stop spam
@@ -150,6 +151,31 @@ class VibrationManager {
   rumbleItemUse(playerId) { this.rumblePlayer(playerId, RUMBLE_PROFILES.ITEM_USE); }
   rumbleItemReceived(playerId) { this.rumblePlayer(playerId, RUMBLE_PROFILES.ITEM_RECEIVED); }
   rumbleItemBlocked(playerId) { this.rumblePlayer(playerId, RUMBLE_PROFILES.ITEM_BLOCKED); }
+
+  rumbleFog(playerId, duration) {
+    const gamepadIndex = this.playerToGamepadIndex.get(playerId);
+    if (gamepadIndex === undefined || duration <= 0) return;
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pad = pads[gamepadIndex];
+    if (!pad || !pad.vibrationActuator) return;
+    this._playOnce(pad, { duration, ...RUMBLE_PROFILES.FOG });
+  }
+
+  stopFog(playerId) {
+    const gamepadIndex = this.playerToGamepadIndex.get(playerId);
+    if (gamepadIndex === undefined) return;
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pad = pads[gamepadIndex];
+    if (!pad || !pad.vibrationActuator) return;
+    try {
+      if (typeof pad.vibrationActuator.reset === 'function') {
+        const result = pad.vibrationActuator.reset();
+        if (result && typeof result.catch === 'function') result.catch(() => {});
+      } else {
+        this._playOnce(pad, { duration: 1, weakMagnitude: 0, strongMagnitude: 0 });
+      }
+    } catch (e) { /* vibration may be unavailable or the pad may disconnect */ }
+  }
 }
 
 // Single shared instance used across the whole app.

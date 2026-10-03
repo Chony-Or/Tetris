@@ -211,6 +211,7 @@ const ITEM_EFFECTS = {
   },
   FOG({ sys, target, st, def }) {
     st.fogUntil = performance.now() + def.duration;
+    if (typeof vibrationManager !== 'undefined') vibrationManager.rumbleFog(target.id, def.duration);
     sys._showFog(target.id, true);
   },
   HEAVY({ target, st, def }) {
@@ -226,6 +227,7 @@ const ItemsSystem = {
   SETTINGS_KEY: 'tetrisai.itemSettings.v3', // v3: drop chance is now a scale on per-row chances
   state: {}, // playerId -> see resetPlayerState()
   _pending: [], // telegraphed offensive items waiting to land: { source, target, def, t, el }
+  _fogRenderers: {},
   _styleInjected: false,
 
   /* =================== LIFECYCLE =================== */
@@ -697,6 +699,7 @@ const ItemsSystem = {
       if (!st) return;
 
       if (st._fogShown && st.fogUntil <= now) this._showFog(p.id, false);
+      if (st._fogShown) this._renderFogWebGL(p.id, now);
 
       // Picker lifecycle
       const pk = st.picker;
@@ -851,6 +854,153 @@ const ItemsSystem = {
 
   _animateBlock(playerId) { this._pulseFrame(playerId, '107,214,255', 'item-shield-block'); },
 
+  _setupFogWebGL(playerId) {
+    if (this._fogRenderers[playerId]) return this._fogRenderers[playerId];
+    const frame = document.getElementById('frame' + playerId);
+    const source = document.getElementById('boardCanvas' + playerId);
+    if (!frame || !source) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'item-fog-webgl';
+    canvas.width = source.width;
+    canvas.height = source.height;
+    let gl;
+    try {
+      gl = canvas.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'high-performance' });
+    } catch (e) { return null; }
+    if (!gl) return null;
+
+    const compile = (type, sourceText) => {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, sourceText);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    };
+    const vertex = compile(gl.VERTEX_SHADER, `
+      attribute vec2 a_position;
+      varying vec2 v_uv;
+      void main() {
+        v_uv = (a_position + 1.0) * 0.5;
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }
+    `);
+    const fragment = compile(gl.FRAGMENT_SHADER, `
+      precision mediump float;
+      uniform sampler2D u_board;
+      uniform float u_time;
+      varying vec2 v_uv;
+      void main() {
+        float t = u_time;
+        vec2 uv = v_uv;
+        vec2 wave = vec2(
+          sin(uv.y * 11.0 + t * 1.2 + sin(uv.x * 3.0)) * 0.018,
+          sin(uv.x * 7.0 - t * 0.9 + cos(uv.y * 4.0)) * 0.014
+        );
+        wave += vec2(sin(uv.y * 4.0 + t * 0.55), cos(uv.x * 3.5 - t * 0.45)) * 0.006;
+        vec4 color = texture2D(u_board, clamp(uv + wave, 0.002, 0.998));
+        color.rgb = mix(color.rgb, vec3(0.48, 0.62, 0.66), 0.14);
+        gl_FragColor = color;
+      }
+    `);
+    if (!vertex || !fragment) {
+      if (vertex) gl.deleteShader(vertex);
+      if (fragment) gl.deleteShader(fragment);
+      return null;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      gl.deleteProgram(program);
+      return null;
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const texture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    gl.uniform1i(gl.getUniformLocation(program, 'u_board'), 0);
+
+    frame.insertBefore(canvas, frame.querySelector('.attack-warning'));
+    const renderer = {
+      canvas, frame, source, gl, program, buffer, texture,
+      timeUniform: gl.getUniformLocation(program, 'u_time'),
+      left: NaN, top: NaN, cssWidth: NaN, cssHeight: NaN
+    };
+    this._fogRenderers[playerId] = renderer;
+    this._positionFogWebGL(renderer);
+    return renderer;
+  },
+
+  _positionFogWebGL(renderer) {
+    const left = renderer.source.offsetLeft;
+    const top = renderer.source.offsetTop;
+    const cssWidth = renderer.source.offsetWidth;
+    const cssHeight = renderer.source.offsetHeight;
+    if (left !== renderer.left || top !== renderer.top || cssWidth !== renderer.cssWidth || cssHeight !== renderer.cssHeight) {
+      renderer.canvas.style.left = left + 'px';
+      renderer.canvas.style.top = top + 'px';
+      renderer.canvas.style.width = cssWidth + 'px';
+      renderer.canvas.style.height = cssHeight + 'px';
+      renderer.left = left;
+      renderer.top = top;
+      renderer.cssWidth = cssWidth;
+      renderer.cssHeight = cssHeight;
+    }
+    if (renderer.canvas.width !== renderer.source.width || renderer.canvas.height !== renderer.source.height) {
+      renderer.canvas.width = renderer.source.width;
+      renderer.canvas.height = renderer.source.height;
+      renderer.gl.viewport(0, 0, renderer.canvas.width, renderer.canvas.height);
+    }
+  },
+
+  _renderFogWebGL(playerId, now) {
+    const renderer = this._setupFogWebGL(playerId);
+    if (!renderer) return;
+    const { gl, source, program, texture } = renderer;
+    this._positionFogWebGL(renderer);
+    gl.viewport(0, 0, renderer.canvas.width, renderer.canvas.height);
+    gl.useProgram(program);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    gl.uniform1f(renderer.timeUniform, now * 0.001);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  },
+
+  _removeFogWebGL(playerId) {
+    const renderer = this._fogRenderers[playerId];
+    if (!renderer) return;
+    renderer.gl.deleteTexture(renderer.texture);
+    renderer.gl.deleteBuffer(renderer.buffer);
+    renderer.gl.deleteProgram(renderer.program);
+    const loseContext = renderer.gl.getExtension('WEBGL_lose_context');
+    if (loseContext) loseContext.loseContext();
+    renderer.canvas.remove();
+    delete this._fogRenderers[playerId];
+  },
+
   _showFog(playerId, on) {
     const st = this.state[playerId];
     const frame = document.getElementById('frame' + playerId);
@@ -859,10 +1009,13 @@ const ItemsSystem = {
     if (on) {
       frame.classList.add('item-fog-shake');
       if (!overlay) { overlay = document.createElement('div'); overlay.className = 'item-fog-overlay'; frame.appendChild(overlay); }
+      this._setupFogWebGL(playerId);
       requestAnimationFrame(() => overlay.classList.add('show'));
       if (st) st._fogShown = true;
     } else {
       frame.classList.remove('item-fog-shake');
+      this._removeFogWebGL(playerId);
+      if (typeof vibrationManager !== 'undefined') vibrationManager.stopFog(playerId);
       if (overlay) {
         overlay.classList.remove('show');
         setTimeout(() => { if (!st || !st._fogShown) overlay.remove(); }, 500);
@@ -997,6 +1150,9 @@ const ItemsSystem = {
       .board-frame.item-shield-block { --item-color: 107,214,255; }
       .board-frame.item-impact { animation-duration: .45s; }
 
+      .item-fog-webgl { position: absolute; z-index: 2; pointer-events: none; border-radius: 6px; }
+      .attack-warning, .garbage-amount { z-index: 4; }
+
       /* Invincibility: steady golden pulse for the whole window */
       @keyframes itemInvincible { 0%,100%{box-shadow:0 0 0 2px rgba(255,210,95,0.9),0 0 22px rgba(255,210,95,0.5);} 50%{box-shadow:0 0 0 3px rgba(255,235,160,1),0 0 40px rgba(255,210,95,0.85);} }
       .board-frame.item-invincible { position: relative; animation: itemInvincible .6s ease-in-out infinite; }
@@ -1011,16 +1167,15 @@ const ItemsSystem = {
       }
       .item-fog-overlay.show { opacity: 1; }
       .item-fog-overlay::before {
-        content: ''; position: absolute; inset: -30%; pointer-events: none;
-        background: repeating-radial-gradient(ellipse 115% 52% at 18% 25%, transparent 0 18px, rgba(220,250,255,0.2) 20px, transparent 24px 42px),
-          repeating-radial-gradient(ellipse 110% 48% at 82% 75%, transparent 0 22px, rgba(190,239,255,0.14) 24px, transparent 28px 50px);
-        opacity: .84; will-change: transform;
+        content: ''; position: absolute; inset: -35%; pointer-events: none;
+        background: linear-gradient(174deg, transparent 36%, rgba(220,250,255,0.035) 44%, rgba(220,250,255,0.11) 52%, rgba(190,239,255,0.025) 60%, transparent 68%);
+        opacity: .72; will-change: transform;
         animation: itemWaterWaves 3.2s ease-in-out infinite alternate;
       }
       .item-fog-overlay::after {
-        content: ''; position: absolute; inset: -20%; pointer-events: none;
-        background: linear-gradient(110deg, transparent 40%, rgba(220,250,255,0.12) 50%, transparent 60%);
-        opacity: .7; will-change: transform;
+        content: ''; position: absolute; inset: -25%; pointer-events: none;
+        background: radial-gradient(ellipse at 50% 48%, rgba(200,235,240,0.08), transparent 72%);
+        opacity: .8; will-change: transform;
         animation: itemWaterSheen 4.4s ease-in-out infinite;
       }
       @keyframes itemWaterWaves { from{transform:translate3d(-3%,-2%,0)} to{transform:translate3d(3%,2%,0)} }
