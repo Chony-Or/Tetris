@@ -50,7 +50,7 @@ The game emphasizes:
 
 - Full start menu, lobby screen, pause flow, settings menu, and results screen
 - Controller-first focus navigation for interactive elements
-- Settings sliders for volume and match speed tuning
+- Settings sliders for volume, match speed, item drop odds, and the line-clear threshold for power-ups
 - Controls reference screen with mapping information
 
 ## Project structure

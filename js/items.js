@@ -20,7 +20,7 @@
  * FAIRNESS / "EQUALIZE TO ALL" DESIGN
  * ---------------------------------------------------------------------
  *  - Every player rolls under the exact same odds, off the exact same
- *    clear thresholds (Tetris / T-spin / 3+ combo) — human, bot,
+ *    clear thresholds (configured lines / T-spin / 3+ combo) — human, bot,
  *    keyboard or gamepad, it's all identical.
  *  - Only one item can ever be held at once (no stockpiling).
  *  - Offensive items always auto-target whoever currently has the most
@@ -45,8 +45,8 @@ const ITEM_DEFS = {
     amount: 2, desc: 'Sends 2 bonus garbage lines to the leader.'
   },
   CLEAR_COLUMN: {
-    id: 'CLEAR_COLUMN', label: 'Clear Column', icon: '🧹', kind: 'self', color: '95,255,143',
-    desc: "Wipes your single tallest column."
+    id: 'CLEAR_COLUMN', label: 'Clear Column', icon: '🧹', kind: 'offense', color: '95,255,143',
+    desc: "Wipes the leader's single tallest column."
   },
   SLOWMO: {
     id: 'SLOWMO', label: 'Slow-Mo', icon: '🐌', kind: 'self', color: '196,107,255',
@@ -65,13 +65,16 @@ const ITEM_POOL = Object.keys(ITEM_DEFS);
 
 const ItemsSystem = {
   enabled: false,
-  ACQUIRE_CHANCE: 0.55,
+  ACQUIRE_CHANCE: 0.75,
+  LINES_TO_QUALIFY: 4,
+  SETTINGS_KEY: 'tetrisai.itemSettings',
   BOT_USE_DELAY_MS: 650,
   state: {}, // playerId -> { held, shield, slowUntil, heavyUntil, fogUntil, _fogShown, _botTimer }
   _styleInjected: false,
 
   /* =================== LIFECYCLE =================== */
   init(players, enabled) {
+    this.loadSettings();
     this.enabled = !!enabled;
     this._injectStyle();
     players.forEach(p => {
@@ -103,8 +106,46 @@ const ItemsSystem = {
   },
 
   /* =================== ACQUISITION =================== */
+  loadSettings() {
+    try {
+      const raw = localStorage.getItem(this.SETTINGS_KEY);
+      if (raw) {
+        const settings = JSON.parse(raw);
+        if (Number.isFinite(settings.acquireChance)) {
+          this.ACQUIRE_CHANCE = this._clampAcquireChance(settings.acquireChance) / 100;
+        }
+        if (Number.isFinite(settings.linesToQualify)) {
+          this.LINES_TO_QUALIFY = this._clampLinesToQualify(settings.linesToQualify);
+        }
+      }
+    } catch (e) { /* ignore unavailable or corrupt settings */ }
+  },
+
+  setAcquireChance(percent) {
+    const chance = this._clampAcquireChance(percent);
+    this.ACQUIRE_CHANCE = chance / 100;
+    this._saveSettings();
+  },
+
+  setLinesToQualify(lines) {
+    this.LINES_TO_QUALIFY = this._clampLinesToQualify(lines);
+    this._saveSettings();
+  },
+
+  _saveSettings() {
+    try {
+      localStorage.setItem(this.SETTINGS_KEY, JSON.stringify({
+        acquireChance: Math.round(this.ACQUIRE_CHANCE * 100),
+        linesToQualify: this.LINES_TO_QUALIFY
+      }));
+    } catch (e) { /* storage unavailable — keep the in-memory setting */ }
+  },
+
+  _clampAcquireChance(percent) { return Math.max(0, Math.min(100, Math.round(percent))); },
+  _clampLinesToQualify(lines) { return Math.max(1, Math.min(4, Math.round(lines))); },
+
   qualifies(numCleared, isTspin, combo) {
-    return numCleared >= 4 || isTspin || combo >= 3;
+    return numCleared >= this.LINES_TO_QUALIFY || isTspin || combo >= 3;
   },
 
   onLineClear(player, info) {
@@ -113,7 +154,7 @@ const ItemsSystem = {
     const st = this.state[player.id];
     if (!st) return;
     if (st.held) { this._flashWasted(player.id); return; } // already holding — clear "wasted", no stockpiling
-    if (Math.random() > this.ACQUIRE_CHANCE) return;
+    if (Math.random() >= this.ACQUIRE_CHANCE) return;
     const itemId = ITEM_POOL[Math.floor(Math.random() * ITEM_POOL.length)];
     this.grantItem(player, itemId);
   },
@@ -167,15 +208,6 @@ const ItemsSystem = {
         this._updateBadges(player.id);
         this._pulseFrame(player.id, def.color, 'item-shield-glow');
         break;
-      case 'CLEAR_COLUMN': {
-        const col = this._tallestColumn(player);
-        if (col !== -1) {
-          for (let r = HIDDEN; r < TOTAL_ROWS; r++) player.grid[r][col] = null;
-          player.updateGhost();
-        }
-        this._pulseFrame(player.id, def.color, 'item-column-flash');
-        break;
-      }
       case 'SLOWMO':
         st.slowUntil = performance.now() + def.duration;
         this._updateBadges(player.id);
@@ -201,6 +233,14 @@ const ItemsSystem = {
       case 'GARBAGE_PLUS':
         target.receiveGarbage(def.amount);
         break;
+      case 'CLEAR_COLUMN': {
+        const col = this._tallestColumn(target);
+        if (col !== -1) {
+          for (let r = HIDDEN; r < TOTAL_ROWS; r++) target.grid[r][col] = null;
+          target.updateGhost();
+        }
+        break;
+      }
       case 'FOG':
         tgtState.fogUntil = performance.now() + def.duration;
         this._showFog(target.id, true);
@@ -333,6 +373,7 @@ const ItemsSystem = {
     if (!frame) return;
     let overlay = frame.querySelector('.item-fog-overlay');
     if (on) {
+      frame.classList.add('item-fog-shake');
       if (!overlay) {
         overlay = document.createElement('div');
         overlay.className = 'item-fog-overlay';
@@ -340,9 +381,14 @@ const ItemsSystem = {
       }
       requestAnimationFrame(() => overlay.classList.add('show'));
       if (st) st._fogShown = true;
-    } else if (overlay) {
-      overlay.classList.remove('show');
-      setTimeout(() => overlay.remove(), 500);
+    } else {
+      frame.classList.remove('item-fog-shake');
+      if (overlay) {
+        overlay.classList.remove('show');
+        setTimeout(() => {
+          if (!st || !st._fogShown) overlay.remove();
+        }, 500);
+      }
       if (st) st._fogShown = false;
     }
   },
@@ -370,6 +416,7 @@ const ItemsSystem = {
     setTimeout(() => orb.remove(), 520);
 
     if (!blocked) {
+      tgtFrame.style.setProperty('--item-color', def.color);
       tgtFrame.classList.remove('item-impact'); void tgtFrame.offsetWidth; tgtFrame.classList.add('item-impact');
       setTimeout(() => tgtFrame.classList.remove('item-impact'), 450);
     }
@@ -426,7 +473,10 @@ const ItemsSystem = {
       .board-frame.item-column-flash { --item-color: 95,255,143; }
       .board-frame.item-selfuse-flash { --item-color: 196,107,255; }
       .board-frame.item-shield-block { --item-color: 107,214,255; }
-      .board-frame.item-impact { animation-duration: .45s; --item-color: 255,84,112; }
+      .board-frame.item-impact { animation-duration: .45s; }
+
+      @keyframes itemFogShake { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-1px,1px)} 50%{transform:translate(1px,-1px)} 75%{transform:translate(-1px,-1px)} }
+      .board-frame.item-fog-shake { animation: itemFogShake .32s linear infinite; }
 
       .item-fog-overlay {
         position: absolute; inset: 0; pointer-events: none; border-radius: inherit;

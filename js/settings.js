@@ -43,6 +43,22 @@ const SettingsMenu = {
         <div class="settings-hint" style="opacity:0.55;font-size:12px;margin:-6px 0 10px;">
           How many lines the leader must clear to raise everyone's speed by one level. Lower = faster-ramping, more intense matches. Applies match-wide, even mid-game.
         </div>
+        <div class="settings-row">
+          <span class="settings-label">Item Drop Chance</span>
+          <input type="range" min="0" max="100" step="1" value="75" id="stItemDropChance" class="settings-slider">
+          <span class="settings-val" id="stVal_itemDropChance">75%</span>
+        </div>
+        <div class="settings-hint" style="opacity:0.55;font-size:12px;margin:-6px 0 10px;">
+          Chance to receive an item after a qualifying clear when you're not already holding one. Applies immediately.
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Lines for Power-Up</span>
+          <input type="range" min="1" max="4" step="1" value="4" id="stItemLines" class="settings-slider">
+          <span class="settings-val" id="stVal_itemLines">4</span>
+        </div>
+        <div class="settings-hint" style="opacity:0.55;font-size:12px;margin:-6px 0 10px;">
+          Line clears at or above this number qualify. T-spins and 3+ combos also qualify. Applies immediately.
+        </div>
         <div class="settings-btns">
           <button class="btn" id="stResetBtn">Reset to Default</button>
           <button class="btn primary" id="stCloseBtn">Done</button>
@@ -67,6 +83,22 @@ const SettingsMenu = {
     });
     lplSlider.addEventListener('change', () => AudioManager.buttonClick());
 
+    const itemChanceSlider = document.getElementById('stItemDropChance');
+    itemChanceSlider.addEventListener('input', () => {
+      const chance = Number(itemChanceSlider.value);
+      ItemsSystem.setAcquireChance(chance);
+      document.getElementById('stVal_itemDropChance').textContent = chance + '%';
+    });
+    itemChanceSlider.addEventListener('change', () => AudioManager.buttonClick());
+
+    const itemLinesSlider = document.getElementById('stItemLines');
+    itemLinesSlider.addEventListener('input', () => {
+      const lines = Number(itemLinesSlider.value);
+      ItemsSystem.setLinesToQualify(lines);
+      document.getElementById('stVal_itemLines').textContent = lines;
+    });
+    itemLinesSlider.addEventListener('change', () => AudioManager.buttonClick());
+
     document.getElementById('stMuteToggle').addEventListener('change', (e) => {
       AudioManager.setMuted(e.target.checked);
     });
@@ -77,6 +109,8 @@ const SettingsMenu = {
     document.getElementById('stResetBtn').addEventListener('click', () => {
       AudioManager.resetToDefaults();
       MatchManager.setLinesPerLevel(10);
+      ItemsSystem.setAcquireChance(75);
+      ItemsSystem.setLinesToQualify(4);
       this._syncControls();
       AudioManager.buttonClick();
     });
@@ -95,6 +129,7 @@ const SettingsMenu = {
   },
 
   _syncControls() {
+    ItemsSystem.loadSettings();
     ['master', 'music', 'sfx', 'ui'].forEach(bus => {
       const v = Math.round((AudioManager.volumes[bus] ?? 0.8) * 100);
       document.getElementById('st_' + bus).value = v;
@@ -105,6 +140,11 @@ const SettingsMenu = {
     const lpl = MatchManager.linesPerLevel ?? 10;
     document.getElementById('stLinesPerLevel').value = lpl;
     document.getElementById('stVal_linesPerLevel').textContent = lpl;
+    const itemChance = Math.round(ItemsSystem.ACQUIRE_CHANCE * 100);
+    document.getElementById('stItemDropChance').value = itemChance;
+    document.getElementById('stVal_itemDropChance').textContent = itemChance + '%';
+    document.getElementById('stItemLines').value = ItemsSystem.LINES_TO_QUALIFY;
+    document.getElementById('stVal_itemLines').textContent = ItemsSystem.LINES_TO_QUALIFY;
   },
 
   open(returnTo) {

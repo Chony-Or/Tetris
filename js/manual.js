@@ -103,9 +103,7 @@ const ManualGuide = {
       .manual-duel-stage.is-playing .manual-duel-projectile{display:flex;animation:manualProjectile .9s cubic-bezier(.2,.65,.35,1) forwards}
       .manual-duel-stage[data-item="SHIELD"] .manual-duel-projectile{left:78%}
       .manual-duel-stage[data-item="SHIELD"].is-playing .manual-duel-projectile{animation-name:manualProjectileReverse}
-      .manual-duel-stage[data-item="CLEAR_COLUMN"] .manual-duel-projectile,
       .manual-duel-stage[data-item="SLOWMO"] .manual-duel-projectile{left:22%}
-      .manual-duel-stage[data-item="CLEAR_COLUMN"].is-playing .manual-duel-projectile,
       .manual-duel-stage[data-item="SLOWMO"].is-playing .manual-duel-projectile{animation-name:manualSelfProjectile}
       @keyframes manualProjectile{to{left:78%;transform:translate(-50%,-50%) scale(.7);opacity:.45}}
       @keyframes manualProjectileReverse{to{left:22%;transform:translate(-50%,-50%) scale(.7);opacity:.45}}
@@ -116,14 +114,15 @@ const ManualGuide = {
       .manual-duel-stage[data-item="GARBAGE_PLUS"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{box-shadow:0 0 18px rgba(255,84,112,.42)}
       .manual-duel-stage[data-item="GARBAGE_PLUS"][data-phase="result"] .manual-duel-cell.garbage{animation:manualGarbageRise .38s ease-out both}
       .manual-duel-stage[data-item="GARBAGE_PLUS"][data-phase="result"] .manual-duel-cell.garbage:nth-child(6n){animation-delay:.12s}
-      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{filter:blur(2px) brightness(.65)}
+      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{filter:blur(2px) brightness(.65);animation:manualFogShake .32s linear infinite}
       .manual-duel-stage[data-item="HEAVY"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{animation:manualHeavy .2s ease-in-out 4 alternate}
       .manual-duel-stage[data-item="SLOWMO"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-board{animation:manualSlow 1.1s ease-in-out 2}
-      .manual-duel-stage[data-item="CLEAR_COLUMN"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-board .manual-duel-cell:nth-child(10n+1){opacity:.15}
+      .manual-duel-stage[data-item="CLEAR_COLUMN"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board .manual-duel-cell:nth-child(10n+1){opacity:.15}
       .manual-duel-caption{min-height:26px;margin:5px auto 0;text-align:center;color:#b5b1c2;font:12px/1.4 var(--font-mono,Consolas,monospace)}
       .manual-duel-controls{display:flex;justify-content:center;margin-top:3px}
       @keyframes manualHeavy{to{transform:translateY(4px)}}
       @keyframes manualSlow{50%{filter:saturate(.25);opacity:.6}}
+      @keyframes manualFogShake{0%,100%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(1px,-1px)}75%{transform:translate(-1px,-1px)}}
       @keyframes manualGarbageRise{from{transform:translateY(14px);opacity:.15}to{transform:translateY(0);opacity:1}}
       @keyframes manualShieldBlock{35%{transform:translate(-50%,-50%) scale(1.18)}100%{transform:translate(-50%,-50%) scale(1)}}
       .manual-practice-layout{display:grid;grid-template-columns:minmax(190px,260px) minmax(0,1fr);gap:20px;align-items:start}
@@ -250,9 +249,12 @@ const ManualGuide = {
   _renderItems(content) {
     this.demoTimers.forEach(clearTimeout);
     this.demoTimers = [];
+    if (typeof ItemsSystem !== 'undefined') ItemsSystem.loadSettings();
     const defs = typeof ITEM_DEFS === 'undefined' ? {} : ITEM_DEFS;
     const entries = Object.values(defs);
     const selected = defs[this.selectedItem] || entries[0];
+    const itemChance = typeof ItemsSystem !== 'undefined' ? Math.round(ItemsSystem.ACQUIRE_CHANCE * 100) : 75;
+    const itemLines = typeof ItemsSystem !== 'undefined' ? ItemsSystem.LINES_TO_QUALIFY : 4;
     const list = entries.map((item) => `
       <button class="btn manual-item-btn ${item.id === (selected && selected.id) ? 'selected' : ''}" data-item="${item.id}" style="--item-rgb:${item.color}">
         <span class="manual-item-icon">${item.icon}</span><span><span class="manual-item-name">${item.label}</span><span class="manual-item-kind">${item.kind === 'self' ? 'Self effect' : 'Targets the leader'}</span></span>
@@ -262,7 +264,7 @@ const ManualGuide = {
       <p>${selected.desc}</p>
     ` : '<h2>Power-ups unavailable</h2><p>Item definitions could not be loaded.</p>';
     content.innerHTML = `
-      <div class="manual-hero manual-item-intro"><div class="manual-callout"><h2>Earn a boost. Spend it wisely.</h2><p>Items are optional and off by default. A Tetris, T-spin, or 3+ combo can earn one. Offensive items hit the living leader; a Shield blocks the next attack or garbage hit.</p></div><div class="manual-stat"><b>55%</b><span>Chance to receive one item after a qualifying clear. Only one item can be held at once.</span></div></div>
+      <div class="manual-hero manual-item-intro"><div class="manual-callout"><h2>Earn a boost. Spend it wisely.</h2><p>Items are optional and off by default. ${itemLines}+ line clears, T-spins, or 3+ combos qualify. Set odds and line requirements in Settings. Offensive items hit the living leader; a Shield blocks the next attack or garbage hit.</p></div><div class="manual-stat"><b>${itemChance}%</b><span>Chance to receive one item after a qualifying clear. Only one item can be held at once.</span></div></div>
       <div class="manual-item-layout"><nav class="manual-item-list" aria-label="Power-up list">${list}</nav><section class="manual-item-detail">${itemContent}</section></div>
       ${selected ? this._duelSampleMarkup(selected) : ''}`;
     if (selected) this._scheduleDuelDemo();
@@ -443,20 +445,20 @@ const ManualGuide = {
         p2Status.textContent = '+2 garbage rows received';
         caption.textContent = 'Sent! Two red garbage rows rise on Player 2’s board. Each row leaves one open hole.';
       } else if (item.id === 'CLEAR_COLUMN') {
-        p1.querySelectorAll('.manual-duel-cell').forEach((cell, index) => {
+        p2.querySelectorAll('.manual-duel-cell').forEach((cell, index) => {
           if (index % 10 === 0) cell.classList.remove('filled');
         });
-        p1Status.textContent = 'Tallest column wiped';
-        p2Status.textContent = 'Unaffected';
-        caption.textContent = 'Player 1 clears one of their tallest columns to make room in the stack.';
+        p1Status.textContent = 'Clear Column sent';
+        p2Status.textContent = 'Tallest column wiped';
+        caption.textContent = 'Player 1 wipes one of the current leader’s tallest columns.';
       } else if (item.id === 'SLOWMO') {
         p1Status.textContent = 'Purple piece falls slowly / 6s';
         p2Status.textContent = 'Unaffected';
         caption.textContent = 'The purple block falls slowly on Player 1’s board. Slow-Mo lengthens the fall interval for 6 seconds.';
       } else if (item.id === 'FOG') {
         p1Status.textContent = 'Fog sent';
-        p2Status.textContent = 'Board obscured for 5 seconds';
-        caption.textContent = 'Player 2’s board is fogged for 5 seconds, making their stack harder to read.';
+        p2Status.textContent = 'Fog and shaking for 5 seconds';
+        caption.textContent = 'Player 2’s board is fogged and shakes for 5 seconds, making their stack harder to read.';
       } else if (item.id === 'HEAVY') {
         p1Status.textContent = 'Heavy Piece sent';
         p2Status.textContent = 'Orange piece falls fast / 5s';

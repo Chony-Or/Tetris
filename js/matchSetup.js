@@ -54,7 +54,7 @@ const MatchSetupMenu = {
         <input type="checkbox" id="msItemsToggle"> Items &amp; Power-ups
       </label>
       <div class="controls-hint ms-items-hint" style="max-width:560px;opacity:0.65;margin:-4px 0 10px;">
-        Clearing a Tetris, a T-spin, or a 3+ combo can award a power-up. Offensive items always target whoever's currently in the lead — a built-in catch-up mechanic, fair for everyone. Off by default.
+        Clearing the configured number of lines, a T-spin, or a 3+ combo can award a power-up. Set item odds and line requirements in Settings. Offensive items target the current leader. Off by default.
       </div>
       <div class="cs-list ms-slot-list" id="msSlotList"></div>
       <button class="btn primary" id="msStartBtn">Start Match</button>
