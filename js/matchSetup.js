@@ -54,7 +54,7 @@ const MatchSetupMenu = {
         <input type="checkbox" id="msItemsToggle"> Items &amp; Power-ups
       </label>
       <div class="controls-hint ms-items-hint" style="max-width:560px;opacity:0.65;margin:-4px 0 10px;">
-        Clearing the configured number of lines, a T-spin, or a 3+ combo can award a power-up. Set item odds and line requirements in Settings. Offensive items target the current leader. Off by default.
+        Clear 1-3 rows to roll a power-up (bigger clears unlock stronger tiers). Clear 4 rows for ${typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10}s of invincibility and a free pick of any power-up. Offensive items target the current leader. Odds are tunable in Settings. Off by default.
       </div>
       <div class="cs-list ms-slot-list" id="msSlotList"></div>
       <button class="btn primary" id="msStartBtn">Start Match</button>

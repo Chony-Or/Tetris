@@ -52,12 +52,12 @@ const SettingsMenu = {
           Chance to receive an item after a qualifying clear when you're not already holding one. Applies immediately.
         </div>
         <div class="settings-row">
-          <span class="settings-label">Lines for Power-Up</span>
-          <input type="range" min="1" max="4" step="1" value="4" id="stItemLines" class="settings-slider">
-          <span class="settings-val" id="stVal_itemLines">4</span>
+          <span class="settings-label">Min Rows for Power-Up</span>
+          <input type="range" min="1" max="4" step="1" value="1" id="stItemLines" class="settings-slider">
+          <span class="settings-val" id="stVal_itemLines">1</span>
         </div>
         <div class="settings-hint" style="opacity:0.55;font-size:12px;margin:-6px 0 10px;">
-          Line clears at or above this number qualify. T-spins and 3+ combos also qualify. Applies immediately.
+          Smallest clear that can roll for a power-up. Larger clears unlock stronger tiers; 4 rows always grants ${typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10}s invincibility + a free pick. Applies immediately.
         </div>
         <div class="settings-btns">
           <button class="btn" id="stResetBtn">Reset to Default</button>
@@ -110,7 +110,7 @@ const SettingsMenu = {
       AudioManager.resetToDefaults();
       MatchManager.setLinesPerLevel(10);
       ItemsSystem.setAcquireChance(75);
-      ItemsSystem.setLinesToQualify(4);
+      ItemsSystem.setLinesToQualify(1);
       this._syncControls();
       AudioManager.buttonClick();
     });
@@ -195,7 +195,7 @@ const ControlsMenu = {
           <div class="controls-card-title">Gamepad</div>
           <div>D-Pad / Stick — Move &nbsp; Face Buttons — Rotate</div>
           <div>LB/LT/RB/RT — Hold &nbsp; D-Pad Up or Stick Up — Hard Drop &nbsp; Start — Pause</div>
-          <div>Y — Use Item <span style="opacity:0.6;">(Items mode only)</span></div>
+          <div>Y — Use Item <span style="opacity:0.6;">(Items mode only; during the 4-row pick, D-Pad L/R chooses, Y uses)</span></div>
         </div>
       </div>
       <button class="btn primary" id="ctlCloseBtn">Done</button>`;

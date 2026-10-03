@@ -114,15 +114,45 @@ const ManualGuide = {
       .manual-duel-stage[data-item="GARBAGE_PLUS"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{box-shadow:0 0 18px rgba(255,84,112,.42)}
       .manual-duel-stage[data-item="GARBAGE_PLUS"][data-phase="result"] .manual-duel-cell.garbage{animation:manualGarbageRise .38s ease-out both}
       .manual-duel-stage[data-item="GARBAGE_PLUS"][data-phase="result"] .manual-duel-cell.garbage:nth-child(6n){animation-delay:.12s}
-      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{filter:blur(2px) brightness(.65);animation:manualFogShake .32s linear infinite}
+      .manual-duel-stage[data-item="GARBAGE_MEGA"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{box-shadow:0 0 24px rgba(255,60,90,.55)}
+      .manual-duel-stage[data-item="GARBAGE_MEGA"][data-phase="result"] .manual-duel-cell.garbage{animation:manualGarbageRise .45s ease-out both}
+      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{filter:url(#manualWaterDistortion) blur(1px) saturate(1.25);animation:manualFogShake .32s linear infinite}
+      .manual-duel-stage[data-item="FOG"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board::after{content:"";position:absolute;z-index:3;inset:-20%;pointer-events:none;background:repeating-linear-gradient(104deg,transparent 0 17px,rgba(220,250,255,.15) 19px,transparent 25px 43px),repeating-linear-gradient(8deg,transparent 0 26px,rgba(190,239,255,.12) 28px,transparent 34px 56px);mix-blend-mode:screen;animation:manualWaterGlints 2s ease-in-out infinite alternate}
       .manual-duel-stage[data-item="HEAVY"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board{animation:manualHeavy .2s ease-in-out 4 alternate}
       .manual-duel-stage[data-item="SLOWMO"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-board{animation:manualSlow 1.1s ease-in-out 2}
       .manual-duel-stage[data-item="CLEAR_COLUMN"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board .manual-duel-cell:nth-child(10n+1){opacity:.15}
+      .manual-duel-stage[data-item="ROW_ERASE"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-cell:nth-child(n+131),
+      .manual-duel-stage[data-item="MEGA_ERASE"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-cell:nth-child(n+111){opacity:.12;transform:scale(.75)}
+      .manual-duel-stage[data-item="BLAST"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board::after,
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="result"] .manual-duel-player[data-player="2"] .manual-duel-board::after{content:"";position:absolute;z-index:3;left:50%;top:72%;width:94px;aspect-ratio:1;border:2px solid rgba(255,120,40,.95);border-radius:50%;background:radial-gradient(circle,rgba(255,210,95,.45),rgba(255,120,40,.08) 60%,transparent 72%);transform:translate(-50%,-50%);animation:manualBlastSample .7s ease-out both;pointer-events:none}
+      .manual-duel-stage[data-item="TETRIS_BONUS"] .manual-duel-projectile{left:22%}
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="clear"] .manual-duel-player[data-player="1"] .manual-duel-cell:nth-child(n+101){animation:manualFourClear .62s ease-out both}
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="picker"] .manual-duel-player[data-player="1"] .manual-duel-board,
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="attack"] .manual-duel-player[data-player="1"] .manual-duel-board,
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-board{box-shadow:0 0 0 2px rgba(255,210,95,.95),0 0 24px rgba(255,210,95,.55)}
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="picker"] .manual-tetris-picker{display:block}
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="clear"] .manual-duel-projectile{display:none}
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="picker"] .manual-tetris-invincible,
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="attack"] .manual-tetris-invincible,
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="result"] .manual-tetris-invincible{display:block}
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="attack"] .manual-duel-player[data-player="2"] .manual-duel-board{animation:manualHeavy .16s ease-in-out 5 alternate}
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="result"] .manual-duel-player[data-player="1"] .manual-duel-status{color:#ffd25f}
+      .manual-tetris-picker{display:none;position:absolute;z-index:4;inset:12px 8px auto;padding:8px 5px;border:1px solid rgba(255,210,95,.8);border-radius:5px;background:rgba(10,9,16,.94);color:#ffd25f;font:700 9px var(--font-mono,Consolas,monospace);box-shadow:0 0 16px rgba(255,210,95,.35)}
+      .manual-tetris-picker-icons{display:flex;justify-content:center;gap:3px;margin-top:6px;font-size:15px}
+      .manual-tetris-picker-icons span{width:21px;height:21px;border:1px solid rgba(255,255,255,.18);border-radius:3px;background:rgba(255,255,255,.06)}
+      .manual-tetris-picker-icons span.selected{border-color:#ffd25f;background:rgba(255,210,95,.2);box-shadow:0 0 8px rgba(255,210,95,.7)}
+      .manual-tetris-invincible{display:none;position:absolute;z-index:3;top:4px;left:50%;padding:2px 5px;background:rgba(10,9,16,.9);color:#ffd25f;font:700 8px var(--font-mono,Consolas,monospace);transform:translateX(-50%);white-space:nowrap}
+      .manual-duel-stage[data-item="BLAST"][data-phase="result"] .manual-duel-cell.blast-hit,
+      .manual-duel-stage[data-item="TETRIS_BONUS"][data-phase="result"] .manual-duel-cell.blast-hit{animation:manualBlastHit .5s ease-out both}
       .manual-duel-caption{min-height:26px;margin:5px auto 0;text-align:center;color:#b5b1c2;font:12px/1.4 var(--font-mono,Consolas,monospace)}
-      .manual-duel-controls{display:flex;justify-content:center;margin-top:3px}
+      .manual-duel-controls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:3px}
       @keyframes manualHeavy{to{transform:translateY(4px)}}
       @keyframes manualSlow{50%{filter:saturate(.25);opacity:.6}}
       @keyframes manualFogShake{0%,100%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(1px,-1px)}75%{transform:translate(-1px,-1px)}}
+      @keyframes manualWaterGlints{from{transform:translate(-3%,-2%) rotate(-7deg);background-position:0 0,0 0}to{transform:translate(3%,2%) rotate(-4deg);background-position:36px -22px,-28px 30px}}
+      @keyframes manualFourClear{0%,35%{background:#fff;box-shadow:0 0 14px #ffd25f;transform:scale(1)}100%{background:rgba(62,230,217,.08);box-shadow:none;transform:scale(.7);opacity:.2}}
+      @keyframes manualBlastSample{0%{opacity:1;scale:.15}100%{opacity:0;scale:1.6}}
+      @keyframes manualBlastHit{0%{background:#fff;box-shadow:0 0 10px #ff7828}100%{background:transparent;box-shadow:none;opacity:.1}}
       @keyframes manualGarbageRise{from{transform:translateY(14px);opacity:.15}to{transform:translateY(0);opacity:1}}
       @keyframes manualShieldBlock{35%{transform:translate(-50%,-50%) scale(1.18)}100%{transform:translate(-50%,-50%) scale(1)}}
       .manual-practice-layout{display:grid;grid-template-columns:minmax(190px,260px) minmax(0,1fr);gap:20px;align-items:start}
@@ -254,17 +284,19 @@ const ManualGuide = {
     const entries = Object.values(defs);
     const selected = defs[this.selectedItem] || entries[0];
     const itemChance = typeof ItemsSystem !== 'undefined' ? Math.round(ItemsSystem.ACQUIRE_CHANCE * 100) : 75;
-    const itemLines = typeof ItemsSystem !== 'undefined' ? ItemsSystem.LINES_TO_QUALIFY : 4;
+    const itemLines = typeof ItemsSystem !== 'undefined' ? ItemsSystem.LINES_TO_QUALIFY : 1;
+    const invincibilitySeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10;
     const list = entries.map((item) => `
       <button class="btn manual-item-btn ${item.id === (selected && selected.id) ? 'selected' : ''}" data-item="${item.id}" style="--item-rgb:${item.color}">
-        <span class="manual-item-icon">${item.icon}</span><span><span class="manual-item-name">${item.label}</span><span class="manual-item-kind">${item.kind === 'self' ? 'Self effect' : 'Targets the leader'}</span></span>
+        <span class="manual-item-icon">${item.icon}</span><span><span class="manual-item-name">${item.label}</span><span class="manual-item-kind">TIER ${item.tier} · ${item.kind === 'self' ? 'Self effect' : 'Targets the leader'}</span></span>
       </button>`).join('');
     const itemContent = selected ? `
       <div class="manual-item-detail-head"><span class="manual-item-detail-icon">${selected.icon}</span><div><h2>${selected.label}</h2><p>${selected.kind === 'self' ? 'Helps your board' : 'Affects the current match leader'}</p></div></div>
       <p>${selected.desc}</p>
     ` : '<h2>Power-ups unavailable</h2><p>Item definitions could not be loaded.</p>';
     content.innerHTML = `
-      <div class="manual-hero manual-item-intro"><div class="manual-callout"><h2>Earn a boost. Spend it wisely.</h2><p>Items are optional and off by default. ${itemLines}+ line clears, T-spins, or 3+ combos qualify. Set odds and line requirements in Settings. Offensive items hit the living leader; a Shield blocks the next attack or garbage hit.</p></div><div class="manual-stat"><b>${itemChance}%</b><span>Chance to receive one item after a qualifying clear. Only one item can be held at once.</span></div></div>
+      <svg class="manual-water-filter" aria-hidden="true"><filter id="manualWaterDistortion" x="-8%" y="-8%" width="116%" height="116%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.028" numOctaves="2" seed="7" result="waterNoise"><animate attributeName="baseFrequency" dur="3.4s" values="0.012 0.028;0.02 0.045;0.012 0.028" repeatCount="indefinite" /></feTurbulence><feDisplacementMap in="SourceGraphic" in2="waterNoise" scale="7" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
+      <div class="manual-hero manual-item-intro"><div class="manual-callout"><h2>Earn a boost. Spend it wisely.</h2><p>Items are optional and off by default. Settings sets the minimum clear for random drops (currently ${itemLines} row${itemLines === 1 ? '' : 's'}); larger clears unlock stronger tiers. A four-row clear always opens a power-up picker and grants ${invincibilitySeconds}s of invincibility. Offensive items target the leader.</p></div><div class="manual-stat"><b>${itemChance}%</b><span>Chance on qualifying 1–3 row clears. Four-row clears always trigger the bonus. Only one item can be held at once.</span></div></div>
       <div class="manual-item-layout"><nav class="manual-item-list" aria-label="Power-up list">${list}</nav><section class="manual-item-detail">${itemContent}</section></div>
       ${selected ? this._duelSampleMarkup(selected) : ''}`;
     if (selected) this._scheduleDuelDemo();
@@ -279,6 +311,7 @@ const ManualGuide = {
   },
 
   _duelSampleMarkup(item) {
+    const invincibilitySeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10;
     const board = (player) => {
       const cells = Array.from({ length: 140 }, (_, index) => {
         const row = Math.floor(index / 10), col = index % 10;
@@ -292,8 +325,9 @@ const ManualGuide = {
         : '';
       const role = player === 1 ? (item.id === 'SHIELD' ? 'Shield holder' : 'Uses item') : (item.kind === 'offense' ? 'Leader / target' : 'Other player');
       const shield = item.id === 'SHIELD' && player === 1 ? '<span class="manual-duel-shield">SHIELD READY</span>' : '';
+      const bonusPicker = player === 1 ? `<span class="manual-tetris-invincible">INVINCIBLE · ${invincibilitySeconds}s</span><div class="manual-tetris-picker">FOUR-LINE BONUS · PICK ANY POWER-UP<div class="manual-tetris-picker-icons">${Object.values(ITEM_DEFS).map(def => `<span class="${def.id === 'BLAST' ? 'selected' : ''}">${def.icon}</span>`).join('')}</div><span>ITEM uses the highlighted choice</span></div>` : '';
       const status = item.id === 'SHIELD' && player === 1 ? 'Incoming hit will be blocked' : 'Stack shown before item use';
-      return `<div class="manual-duel-player" data-player="${player}"><div class="manual-duel-name"><span>PLAYER ${player}</span><span class="manual-duel-role">${role}</span></div><div class="manual-duel-board">${cells}${shield}${fallingPiece}</div><div class="manual-duel-status">${status}</div></div>`;
+      return `<div class="manual-duel-player" data-player="${player}"><div class="manual-duel-name"><span>PLAYER ${player}</span><span class="manual-duel-role">${role}</span></div><div class="manual-duel-board">${cells}${shield}${fallingPiece}${bonusPicker}</div><div class="manual-duel-status">${status}</div></div>`;
     };
     const caption = item.id === 'SHIELD'
       ? 'Player 2 sends an attack. Player 1’s Shield absorbs it; their stack stays unchanged.'
@@ -301,7 +335,7 @@ const ManualGuide = {
         ? 'Player 1 uses Garbage+. Two garbage rows rise on the leader’s board, each with a gap.'
         : `${item.label} is used by Player 1. Watch the affected board when you run the sample.`;
     const source = item.id === 'SHIELD' ? '✦' : item.icon;
-    return `<section class="manual-duel"><div class="manual-duel-head"><h3>Two-player sample</h3><span class="manual-item-kind">SIMULATED MATCH / NO GAME STATE CHANGES</span></div><div class="manual-duel-stage" id="manualDuelStage" data-item="${item.id}" data-phase="ready">${board(1)}${board(2)}<span class="manual-duel-projectile" aria-hidden="true">${source}</span></div><p class="manual-duel-caption" id="manualDuelCaption" aria-live="polite">${caption}</p><div class="manual-duel-controls"><button class="btn primary" data-action="run-duel">↻ Replay sample</button></div></section>`;
+    return `<section class="manual-duel"><div class="manual-duel-head"><h3>Two-player sample</h3><span class="manual-item-kind">SIMULATED MATCH / NO GAME STATE CHANGES</span></div><div class="manual-duel-stage" id="manualDuelStage" data-item="${item.id}" data-phase="ready">${board(1)}${board(2)}<span class="manual-duel-projectile" aria-hidden="true">${source}</span></div><p class="manual-duel-caption" id="manualDuelCaption" aria-live="polite">${caption}</p><div class="manual-duel-controls"><button class="btn primary" data-action="run-duel">↻ Replay item</button><button class="btn" data-action="run-tetris">4-row bonus</button></div></section>`;
   },
 
   _renderPractice(content) {
@@ -432,18 +466,23 @@ const ManualGuide = {
         p1Status.textContent = 'Shield consumed; board protected';
         p2Status.textContent = 'Attack absorbed by Player 1';
         caption.textContent = 'Blocked! Player 1 loses the Shield, but no garbage reaches their board.';
-      } else if (item.id === 'GARBAGE_PLUS') {
+      } else if (item.id === 'GARBAGE_PLUS' || item.id === 'GARBAGE_MEGA') {
         const cells = Array.from(p2.querySelectorAll('.manual-duel-cell'));
+        const garbageRows = item.id === 'GARBAGE_MEGA' ? 4 : 2;
+        const firstGarbageRow = 10 - garbageRows;
         cells.forEach((cell, index) => {
           const row = Math.floor(index / 10), col = index % 10;
           cell.className = 'manual-duel-cell';
           if (row >= 10 && col !== 6) cell.classList.add('filled');
-          if ((row === 8 && col !== 2) || (row === 9 && col !== 7)) cell.classList.add('garbage');
-          if ((row === 8 && col === 2) || (row === 9 && col === 7)) cell.classList.add('hole');
+          if (row >= firstGarbageRow && row < 10) {
+            const hole = (row * 3 + 2) % 10;
+            if (col !== hole) cell.classList.add('garbage');
+            else cell.classList.add('hole');
+          }
         });
-        p1Status.textContent = 'Garbage+ used';
-        p2Status.textContent = '+2 garbage rows received';
-        caption.textContent = 'Sent! Two red garbage rows rise on Player 2’s board. Each row leaves one open hole.';
+        p1Status.textContent = `${item.label} used`;
+        p2Status.textContent = `+${garbageRows} garbage rows received`;
+        caption.textContent = `Sent! ${garbageRows} red garbage rows rise on Player 2’s board, each with an open hole.`;
       } else if (item.id === 'CLEAR_COLUMN') {
         p2.querySelectorAll('.manual-duel-cell').forEach((cell, index) => {
           if (index % 10 === 0) cell.classList.remove('filled');
@@ -451,6 +490,25 @@ const ManualGuide = {
         p1Status.textContent = 'Clear Column sent';
         p2Status.textContent = 'Tallest column wiped';
         caption.textContent = 'Player 1 wipes one of the current leader’s tallest columns.';
+      } else if (item.id === 'ROW_ERASE' || item.id === 'MEGA_ERASE') {
+        const rows = item.rows || 1;
+        p1.querySelectorAll('.manual-duel-cell').forEach((cell, index) => {
+          if (Math.floor(index / 10) >= 14 - rows) cell.classList.remove('filled');
+        });
+        p1Status.textContent = `${rows} bottom row${rows === 1 ? '' : 's'} erased`;
+        p2Status.textContent = 'Unaffected';
+        caption.textContent = `${item.label} clears ${rows === 1 ? 'the bottom row' : `the bottom ${rows} rows`} from Player 1’s board.`;
+      } else if (item.id === 'BLAST') {
+        p2.querySelectorAll('.manual-duel-cell').forEach((cell, index) => {
+          const row = Math.floor(index / 10), col = index % 10;
+          if ((row - 11) ** 2 + (col - 4) ** 2 <= 9 && cell.classList.contains('filled')) {
+            cell.classList.remove('filled');
+            cell.classList.add('blast-hit');
+          }
+        });
+        p1Status.textContent = 'Blast sent';
+        p2Status.textContent = 'Inner blocks blasted';
+        caption.textContent = 'Blast erupts in the leader’s stack, removing blocks within its radius.';
       } else if (item.id === 'SLOWMO') {
         p1Status.textContent = 'Purple piece falls slowly / 6s';
         p2Status.textContent = 'Unaffected';
@@ -465,6 +523,63 @@ const ManualGuide = {
         caption.textContent = 'The orange block drops rapidly on Player 2’s board. Heavy Piece shortens the fall interval for 5 seconds.';
       }
     }, 920));
+  },
+
+  _tryTetrisBonus() {
+    const invincibilitySeconds = typeof ITEM_CONFIG !== 'undefined' ? ITEM_CONFIG.INVINCIBILITY_MS / 1000 : 10;
+    const stage = this.overlay.querySelector('#manualDuelStage');
+    const caption = this.overlay.querySelector('#manualDuelCaption');
+    if (!stage || !caption || typeof ITEM_DEFS === 'undefined') return;
+    this.demoTimers.forEach(clearTimeout);
+    this.demoTimers = [];
+    this._resetDuelSample(stage, ITEM_DEFS.BLAST);
+    stage.classList.remove('is-playing');
+    stage.dataset.item = 'TETRIS_BONUS';
+    stage.dataset.phase = 'clear';
+    const p1 = stage.querySelector('[data-player="1"]');
+    const p2 = stage.querySelector('[data-player="2"]');
+    const projectile = stage.querySelector('.manual-duel-projectile');
+    const p1Status = p1.querySelector('.manual-duel-status');
+    const p2Status = p2.querySelector('.manual-duel-status');
+    projectile.textContent = ITEM_DEFS.BLAST.icon;
+    p1.querySelectorAll('.manual-duel-cell').forEach((cell, index) => {
+      if (index >= 100) cell.className = 'manual-duel-cell filled';
+    });
+    p1Status.textContent = 'Four rows clearing';
+    p2Status.textContent = 'Waiting for the attack';
+    caption.textContent = 'Player 1 clears four rows and earns a power-up pick.';
+
+    this.demoTimers.push(setTimeout(() => {
+      p1.querySelectorAll('.manual-duel-cell').forEach((cell, index) => {
+        if (index >= 100) cell.className = 'manual-duel-cell';
+      });
+      stage.dataset.phase = 'picker';
+      p1Status.textContent = `Invincible · ${invincibilitySeconds}s to choose`;
+      p2Status.textContent = 'Protected target selection';
+      caption.textContent = `Player 1 is protected for ${invincibilitySeconds} seconds. The highlighted power-up is used immediately when selected.`;
+      this.demoTimers.push(setTimeout(() => {
+        stage.classList.remove('is-playing');
+        void stage.offsetWidth;
+        stage.dataset.phase = 'attack';
+        stage.classList.add('is-playing');
+        p1Status.textContent = 'BLAST selected';
+        caption.textContent = 'Player 1 chooses BLAST; the golden protection remains active while it hits Player 2.';
+        this.demoTimers.push(setTimeout(() => {
+          stage.classList.remove('is-playing');
+          stage.dataset.phase = 'result';
+          p2.querySelectorAll('.manual-duel-cell').forEach((cell, index) => {
+            const row = Math.floor(index / 10), col = index % 10;
+            if ((row - 11) ** 2 + (col - 4) ** 2 <= 9 && cell.classList.contains('filled')) {
+              cell.classList.remove('filled');
+              cell.classList.add('blast-hit');
+            }
+          });
+          p1Status.textContent = `Invincible · ${invincibilitySeconds}s`;
+          p2Status.textContent = 'Blast hit';
+          caption.textContent = `Four cleared rows grant a guaranteed pick and ${invincibilitySeconds} seconds of invincibility; the selected power-up is used immediately.`;
+        }, 900));
+      }, 1200));
+    }, 650));
   },
 
   _resetDuelSample(stage, item) {
@@ -496,6 +611,7 @@ const ManualGuide = {
       FocusNav.refresh(true);
     } else if (button.dataset.action === 'close') this.close();
     else if (button.dataset.action === 'run-duel') this._tryItem();
+    else if (button.dataset.action === 'run-tetris') this._tryTetrisBonus();
     else if (button.dataset.action === 'left') this._movePractice(-1);
     else if (button.dataset.action === 'right') this._movePractice(1);
     else if (button.dataset.action === 'rotate') this._rotatePractice();

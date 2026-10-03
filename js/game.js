@@ -200,6 +200,9 @@ Player.prototype.updateGhost = function () {
 };
 Player.prototype.move = function (dx) {
   if (!this.alive) return false;
+  // 4-row power-up picker: LEFT/RIGHT move the picker cursor instead of the piece.
+  // Returning false also stops the ARR "while (p.move(dir))" loop from spinning.
+  if (typeof ItemsSystem !== 'undefined' && ItemsSystem.interceptMove(this, dx)) return false;
   this.lastActionAt = performance.now();
   if (!this.checkCollision(this.px, this.py + dx, this.rotState)) {
     this.py += dx; this.updateGhost(); this.resetLockIfGrounded(); AudioManager.move();
